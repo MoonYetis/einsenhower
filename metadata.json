@@ -1,0 +1,6 @@
+{
+  "name": "Collaborative Eisenhower Matrix",
+  "description": "Collaborative task manager based on the Eisenhower Matrix, with team delegation, activity history, sequential notes, and file attachments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
