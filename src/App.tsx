@@ -10,7 +10,8 @@ import {
   FileText, 
   Users, 
   CheckCircle, 
-  ChevronRight, 
+  ChevronRight,
+  ChevronLeft, 
   Copy, 
   Check, 
   GitBranch, 
@@ -235,6 +236,52 @@ export default function App() {
 
   // Estado para redactar notas interactivas secuenciales
   const [newNoteContent, setNewNoteContent] = useState("");
+
+  // Estados del calendario interactivo
+  const [calendarYear, setCalendarYear] = useState<number>(2026);
+  const [calendarMonth, setCalendarMonth] = useState<number>(4); // Mayo por defecto
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+
+  // Comprobar si una tarea coincide con un día específico del calendario
+  const matchTaskWithDate = (taskDate: string | undefined, year: number, month: number, day: number): boolean => {
+    if (!taskDate) return false;
+    
+    const normalized = taskDate.toLowerCase().trim();
+    
+    // 1. Coincidencia con fechas ISO YYYY-MM-DD
+    const isoMatch = normalized.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const tYear = parseInt(isoMatch[1], 10);
+      const tMonth = parseInt(isoMatch[2], 10) - 1; // Mes en JS es base 0
+      const tDay = parseInt(isoMatch[3], 10);
+      return tYear === year && tMonth === month && tDay === day;
+    }
+    
+    // 2. Mapear meses en español
+    const spanishMonths = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const currentMonthName = spanishMonths[month];
+    
+    // 3. Comprobar si el texto contiene el mes y el día específico
+    if (normalized.includes(currentMonthName)) {
+      const numberMatches = normalized.match(/\d+/);
+      if (numberMatches) {
+        const parsedDay = parseInt(numberMatches[0], 10);
+        return parsedDay === day;
+      }
+    }
+
+    // "fin de mes" en Mayo de 2026 -> 31 de Mayo
+    if (normalized.includes("fin de mes") && month === 4 && day === 31) {
+      return true;
+    }
+    
+    // "inmediata" en Mayo de 2026 -> 26 de Mayo (día de hoy según hora del sistema)
+    if (normalized.includes("inmediata") && year === 2026 && month === 4 && day === 26) {
+      return true;
+    }
+    
+    return false;
+  };
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -1198,6 +1245,212 @@ services:
 
               </div>
             </div>
+          </div>
+
+          {/* PLANIFICADOR COMPLETO & CALENDARIO INTERACTIVO (Fase 2+) */}
+          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-indigo-600" /> CALENDARIO Y PLANIFICADOR DE PLAZOS
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Visualiza plazos, detecta cuellos de botella y haz clic en un día para reprogramar o crear tareas.
+                </p>
+              </div>
+
+              {/* Controles de Navegación de Mes */}
+              <div className="flex items-center gap-2 self-start md:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (calendarMonth === 0) {
+                      setCalendarMonth(11);
+                      setCalendarYear(y => y - 1);
+                    } else {
+                      setCalendarMonth(m => m - 1);
+                    }
+                    setSelectedCalendarDay(null);
+                  }}
+                  className="p-1 px-2 border border-slate-200 rounded bg-white hover:bg-slate-50 text-slate-600 text-xs transition-colors flex items-center justify-center cursor-pointer select-none"
+                  title="Mes Anterior"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <span className="text-xs font-black font-mono text-slate-900 px-3 min-w-[120px] text-center bg-slate-50 py-1.5 rounded-md border border-slate-100 uppercase tracking-widest">
+                  {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][calendarMonth]} {calendarYear}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (calendarMonth === 11) {
+                      setCalendarMonth(0);
+                      setCalendarYear(y => y + 1);
+                    } else {
+                      setCalendarMonth(m => m + 1);
+                    }
+                    setSelectedCalendarDay(null);
+                  }}
+                  className="p-1 px-2 border border-slate-200 rounded bg-white hover:bg-slate-50 text-slate-600 text-xs transition-colors flex items-center justify-center cursor-pointer select-none"
+                  title="Siguiente Mes"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Leyenda de Prioridad de Cuadrantes */}
+            <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono font-bold text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <span className="text-slate-400 uppercase tracking-wider">Prioridades:</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Q1 (Urgente)</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block"></span> Q2 (Estratégico)</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Q3 (Delegado)</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span> Q4 (Baja Prioridad)</span>
+            </div>
+
+            {/* Matriz Calendario (Grid) */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+              {/* Días de la semana */}
+              <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-[10px] font-mono font-bold text-slate-400 text-center uppercase tracking-widest py-2">
+                {["L", "M", "X", "J", "V", "S", "D"].map(d => (
+                  <div key={d}>{d}</div>
+                ))}
+              </div>
+
+              {/* Cuadrículas de los Días */}
+              <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-slate-50 text-slate-800">
+                {/* Celdas vacías iniciales para empotrar inicio del mes */}
+                {Array.from({ length: (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7 }).map((_, index) => (
+                  <div key={`empty-${index}`} className="min-h-[4.5rem] bg-slate-50/50"></div>
+                ))}
+
+                {/* Celdas numéricas del mes */}
+                {Array.from({ length: new Date(calendarYear, calendarMonth + 1, 0).getDate() }).map((_, idx) => {
+                  const day = idx + 1;
+                  const isSelected = selectedCalendarDay === day;
+                  const isCurrentNow = new Date().getDate() === day && new Date().getMonth() === calendarMonth && new Date().getFullYear() === calendarYear;
+                  const matchingTasks = tasks.filter(t => matchTaskWithDate(t.due_date, calendarYear, calendarMonth, day));
+
+                  return (
+                    <div
+                      key={`day-${day}`}
+                      onClick={() => setSelectedCalendarDay(day)}
+                      className={`min-h-[4.5rem] bg-white p-2 transition-all cursor-pointer flex flex-col justify-between selection:bg-transparent relative hover:bg-indigo-50/10 ${
+                        isSelected 
+                          ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/20" 
+                          : isCurrentNow 
+                            ? "bg-slate-900/5 font-black" 
+                            : ""
+                      }`}
+                    >
+                      {/* Cabecera de celda: Número del día */}
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-mono leading-none ${
+                          isCurrentNow 
+                            ? "bg-slate-900 text-white font-black px-1.5 py-0.5 rounded-full text-[9px]" 
+                            : isSelected 
+                              ? "text-indigo-700 font-extrabold" 
+                              : "text-slate-400 font-medium"
+                        }`}>
+                          {day}
+                        </span>
+                        {matchingTasks.length > 0 && (
+                          <span className="text-[8px] font-mono bg-indigo-100 text-indigo-700 leading-none px-1 rounded-full font-black">
+                            {matchingTasks.length}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Lista de Micro Tareas con Código de Color */}
+                      <div className="space-y-1 mt-1 flex-1 overflow-y-auto max-h-[3.2rem] scrollbar-none">
+                        {matchingTasks.map(task => {
+                          const isTaskActive = selectedTaskId === task.id;
+                          const bgClass = 
+                            task.quadrant === "Q1" ? "bg-red-50 text-red-700 border-red-200" :
+                            task.quadrant === "Q2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                            task.quadrant === "Q3" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            "bg-slate-150 text-slate-700 border-slate-250";
+
+                          const dotClass = 
+                            task.quadrant === "Q1" ? "bg-red-500" :
+                            task.quadrant === "Q2" ? "bg-indigo-600" :
+                            task.quadrant === "Q3" ? "bg-amber-500" :
+                            "bg-slate-400";
+
+                          return (
+                            <button
+                              key={task.id}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Evitar seleccionar celda del día
+                                setSelectedTaskId(task.id);
+                              }}
+                              title={`[${task.quadrant}] ${task.title}`}
+                              className={`w-full text-left text-[8px] font-semibold p-1 py-0.5 rounded border leading-tight truncate flex items-center gap-1 select-none cursor-pointer hover:shadow-xs translate-y-0 active:translate-y-px transition-all ${bgClass} ${
+                                isTaskActive ? "ring-1 ring-slate-900 font-bold" : ""
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
+                              <span className="truncate">{task.id}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Panel de Acciones Rápidas del Día Seleccionado */}
+            {selectedCalendarDay !== null ? (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans shadow-xxs">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 px-2.5 bg-slate-900 text-white font-mono text-xs font-bold rounded">
+                    {selectedCalendarDay}
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-black tracking-widest block uppercase font-mono">Día Seleccionado:</span>
+                    <span className="text-xs font-bold text-slate-900">
+                      {selectedCalendarDay} de {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][calendarMonth]} de {calendarYear}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Boton para programar tarea actualmente cargada en el panel de detalle */}
+                  {currentTask && currentTask.id && currentTask.title && !currentTask.title.startsWith("Cargando") ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
+                        handleUpdateDueDate(currentTask.id, dateString);
+                      }}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] font-sans font-black uppercase tracking-wider transition-all cursor-pointer select-none"
+                    >
+                      📅 Asignar a {currentTask.id}
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
+                      setNewDueDate(dateString);
+                      setShowAddTaskModal(true);
+                    }}
+                    className="px-3 py-1.5 bg-slate-900 border border-slate-950 text-white hover:bg-slate-800 rounded-md text-[10px] font-sans font-black uppercase tracking-wider transition-all cursor-pointer select-none whitespace-nowrap"
+                  >
+                    ➕ Crear Tarea Aquí
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-3.5 border border-dashed border-slate-200 text-slate-400 text-xs rounded-lg font-sans">
+                💡 Haz clic en cualquier celda para desbloquear el planificador interactivo rápido sobre ese día.
+              </div>
+            )}
           </div>
 
           {/* Explorador de Código en Tiempo Real de Fase 2 (En Español) */}
