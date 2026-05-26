@@ -276,6 +276,7 @@ export default function App() {
     return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
   });
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
 
   // Consola de Telemetría y Actividades en tiempo real
   const [consoleLogs, setConsoleLogs] = useState<{ id: string; time: string; text: string; type: "info" | "success" | "warn" | "error" | "telemetry" }[]>(() => {
@@ -1268,16 +1269,16 @@ services:
     <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden selection:bg-slate-900 selection:text-white">
       
       {/* Header de Navegación Estilo Geometric Balance */}
-      <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 flex-shrink-0 shadow-sm z-20">
+      <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-8 flex-shrink-0 shadow-sm z-20">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-slate-900 rounded flex items-center justify-center text-white font-mono text-lg font-black tracking-tighter">
+            <div className="w-9 h-9 bg-slate-900 rounded flex items-center justify-center text-white font-mono text-lg font-black tracking-tighter shrink-0 select-none">
               M
             </div>
             <div className="flex flex-col">
-              <span className="font-mono text-[10px] font-black text-slate-400 tracking-widest -mb-0.5 uppercase">Fase 2 / Backend Activo</span>
-              <h1 className="font-black text-base tracking-tight uppercase text-slate-900 flex items-center gap-1.5">
-                MatrixOS <span className="text-slate-400 font-medium">/ Arquitectura</span>
+              <span className="font-mono text-[9px] md:text-[10px] font-black text-slate-400 tracking-widest -mb-0.5 uppercase truncate max-w-[120px] md:max-w-none">Fase 2 / Backend Activo</span>
+              <h1 className="font-black text-sm md:text-base tracking-tight uppercase text-slate-900 flex items-center gap-1.5">
+                MatrixOS <span className="text-slate-400 font-medium hidden sm:inline">/ Arquitectura</span>
               </h1>
             </div>
           </div>
@@ -1289,17 +1290,17 @@ services:
           </nav>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-5">
+        <div className="flex items-center gap-2 md:gap-5">
           {/* Avatar e Información de Sesión Activa */}
           {currentUser && (
-            <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 py-1 px-3 rounded-full text-xs text-slate-700 select-none">
-              <span className="w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center text-[9px] font-mono text-white font-bold shrink-0">
+            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 py-1 px-2.5 rounded-full text-[10px] md:text-xs text-slate-700 select-none shrink-0">
+              <span className="w-4.5 h-4.5 md:w-5 md:h-5 bg-slate-900 rounded-full flex items-center justify-center text-[8px] md:text-[9px] font-mono text-white font-bold shrink-0">
                 {currentUser.avatar}
               </span>
               <span className="font-bold truncate hidden sm:inline max-w-[120px]">{currentUser.name}</span>
               <button 
                 onClick={handleLogout}
-                className="text-[9px] uppercase font-bold text-slate-400 hover:text-rose-600 border-l border-slate-300 pl-2 ml-1 cursor-pointer transition-colors"
+                className="text-[9px] uppercase font-bold text-slate-400 hover:text-rose-600 border-l border-slate-300 pl-1.5 ml-1 cursor-pointer transition-colors"
                 title="Cerrar sesión activa del equipo"
               >
                 Salir
@@ -1308,11 +1309,11 @@ services:
           )}
 
           {/* Listado de Miembros del Equipo de Arquitectura */}
-          <div className="hidden sm:flex -space-x-2 items-center">
+          <div className="hidden md:flex -space-x-2 items-center shrink-0">
             {mockTeamUsers.map(user => (
               <div 
                 key={user.id} 
-                className="w-8 h-8 rounded-full border-2 border-white bg-slate-800 text-white flex items-center justify-center text-[10px] font-black cursor-help hover:scale-105 transition-transform" 
+                className="w-7 h-7 rounded-full border-2 border-white bg-slate-800 text-white flex items-center justify-center text-[10px] font-black cursor-help hover:scale-105 transition-transform" 
                 title={`${user.name} (${user.email})`}
               >
                 {user.avatar}
@@ -1322,9 +1323,9 @@ services:
 
           <button 
             onClick={() => handleOpenAddTaskModal()}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono font-bold rounded uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-2.5 py-1.5 md:px-4 md:py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono font-bold rounded uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" /> Nueva Tarea
+            <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Nueva Tarea</span>
           </button>
         </div>
       </header>
@@ -1962,10 +1963,10 @@ services:
           </div>
 
           {/* Ejes y Cuadrícula de la Matriz */}
-          <div className="border border-slate-200 rounded bg-white overflow-hidden shadow-sm">
+          <div className="border border-slate-200 rounded-xl md:rounded bg-slate-200 md:bg-white overflow-hidden shadow-sm">
             
             {/* Cabecera del eje horizontal */}
-            <div className="h-12 flex border-b border-slate-200 bg-slate-100/60 font-mono">
+            <div className="hidden md:flex h-12 border-b border-slate-200 bg-slate-100/60 font-mono">
               <div className="w-12 border-r border-slate-200 flex items-center justify-center bg-slate-100">
                 <Clock className="w-4 h-4 text-slate-500" />
               </div>
@@ -1983,10 +1984,10 @@ services:
               </div>
             </div>
 
-            <div className="flex">
+            <div className="flex flex-col md:flex-row">
               
               {/* Columna de etiquetas de eje vertical */}
-              <div className="w-12 flex flex-col border-r border-slate-200 bg-slate-100/60 font-mono">
+              <div className="hidden md:flex w-12 flex-col border-r border-slate-200 bg-slate-100/60 font-mono">
                 <div className="h-56 flex items-center justify-center border-b border-slate-200 bg-white">
                   <span className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-700 rotate-[-90deg] whitespace-nowrap">
                     ⭐ Importante
@@ -2000,13 +2001,13 @@ services:
               </div>
 
               {/* El Grid de 4 cuadrantes balanceados */}
-              <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-slate-200">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0.5 md:gap-px bg-slate-200">
                 
                 {/* Q1: HACER PRIMERO */}
                 <div 
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, "Q1")}
-                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-red-200 transition-colors"
+                  className="bg-white p-5 min-h-[12rem] max-h-[18rem] md:min-h-[14rem] md:max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-red-200 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-1.5">
@@ -2021,7 +2022,10 @@ services:
                     {filteredTasks.filter(t => t.quadrant === "Q1").map(task => (
                       <div
                         key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => {
+                          setSelectedTaskId(task.id);
+                          setIsMobileDetailsOpen(true);
+                        }}
                         draggable="true"
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
@@ -2067,7 +2071,7 @@ services:
                 <div 
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, "Q2")}
-                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-indigo-200 transition-colors"
+                  className="bg-white p-5 min-h-[12rem] max-h-[18rem] md:min-h-[14rem] md:max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-indigo-200 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
@@ -2082,7 +2086,10 @@ services:
                     {filteredTasks.filter(t => t.quadrant === "Q2").map(task => (
                       <div
                         key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => {
+                          setSelectedTaskId(task.id);
+                          setIsMobileDetailsOpen(true);
+                        }}
                         draggable="true"
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
@@ -2128,7 +2135,7 @@ services:
                 <div 
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, "Q3")}
-                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-amber-200 transition-colors"
+                  className="bg-white p-5 min-h-[12rem] max-h-[18rem] md:min-h-[14rem] md:max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-amber-200 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
@@ -2143,7 +2150,10 @@ services:
                     {filteredTasks.filter(t => t.quadrant === "Q3").map(task => (
                       <div
                         key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => {
+                          setSelectedTaskId(task.id);
+                          setIsMobileDetailsOpen(true);
+                        }}
                         draggable="true"
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
@@ -2189,7 +2199,7 @@ services:
                 <div 
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, "Q4")}
-                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-slate-300 transition-colors"
+                  className="bg-white p-5 min-h-[12rem] max-h-[18rem] md:min-h-[14rem] md:max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-slate-300 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
@@ -2204,7 +2214,10 @@ services:
                     {filteredTasks.filter(t => t.quadrant === "Q4").map(task => (
                       <div
                         key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => {
+                          setSelectedTaskId(task.id);
+                          setIsMobileDetailsOpen(true);
+                        }}
                         draggable="true"
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
@@ -2326,7 +2339,7 @@ services:
               <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-slate-50 text-slate-800">
                 {/* Celdas vacías iniciales para empotrar inicio del mes */}
                 {Array.from({ length: (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7 }).map((_, index) => (
-                  <div key={`empty-${index}`} className="min-h-[4.5rem] bg-slate-50/50"></div>
+                  <div key={`empty-${index}`} className="min-h-[3.5rem] md:min-h-[4.5rem] bg-slate-50/50"></div>
                 ))}
 
                 {/* Celdas numéricas del mes */}
@@ -2340,7 +2353,7 @@ services:
                     <div
                       key={`day-${day}`}
                       onClick={() => setSelectedCalendarDay(day)}
-                      className={`min-h-[4.5rem] bg-white p-2 transition-all cursor-pointer flex flex-col justify-between selection:bg-transparent relative hover:bg-indigo-50/10 ${
+                      className={`min-h-[3.5rem] md:min-h-[4.5rem] bg-white p-2 transition-all cursor-pointer flex flex-col justify-between selection:bg-transparent relative hover:bg-indigo-50/10 ${
                         isSelected 
                           ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/20" 
                           : isCurrentNow 
@@ -2388,6 +2401,7 @@ services:
                               onClick={(e) => {
                                 e.stopPropagation(); // Evitar seleccionar celda del día
                                 setSelectedTaskId(task.id);
+                                setIsMobileDetailsOpen(true);
                               }}
                               title={`[${task.quadrant}] ${task.title}`}
                               className={`w-full text-left text-[8px] font-semibold p-1 py-0.5 rounded border leading-tight truncate flex items-center gap-1 select-none cursor-pointer hover:shadow-xs translate-y-0 active:translate-y-px transition-all ${bgClass} ${
@@ -3182,13 +3196,38 @@ services:
 
         </section>
 
+        {/* Backdrop de Drawer para celulares */}
+        {isMobileDetailsOpen && (
+          <div 
+            onClick={() => setIsMobileDetailsOpen(false)}
+            className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs lg:hidden transition-opacity duration-300"
+          />
+        )}
+
         {/* Lado Derecho: Panel de Detalles de la Tarea / Hilos de Notas / Trazabilidad en Español */}
-        <aside className="w-96 border-l border-slate-200 bg-white flex flex-col justify-between flex-shrink-0 z-10 shadow-sm">
+        <aside 
+          className={`
+            fixed inset-y-0 right-0 z-40 bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between transition-transform duration-300
+            w-full max-w-[420px] sm:max-w-md
+            ${isMobileDetailsOpen ? "translate-x-0" : "translate-x-full"}
+            lg:translate-x-0 lg:static lg:w-96 lg:z-10 lg:shadow-sm lg:flex lg:flex-shrink-0
+          `}
+        >
           
           <div className="h-14 border-b border-slate-200 bg-slate-50 px-5 flex items-center justify-between flex-none select-none">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-555 flex items-center gap-1.5 font-sans">
-              <Info className="w-3.5 h-3.5 text-indigo-600" /> Detalle de Tarea Seleccionada
-            </span>
+            <div className="flex items-center gap-1 truncate">
+              <button
+                type="button"
+                onClick={() => setIsMobileDetailsOpen(false)}
+                className="lg:hidden p-1 mr-1 text-slate-400 hover:text-slate-950 rounded hover:bg-slate-200/50 transition-colors cursor-pointer text-xs font-black shrink-0"
+                title="Cerrar ventana"
+              >
+                ✕
+              </button>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-555 flex items-center gap-1.5 font-sans truncate">
+                <Info className="w-3.5 h-3.5 text-indigo-600 animate-pulse" /> Detalle de Tarea
+              </span>
+            </div>
             {deleteConfirmTaskId === currentTask.id ? (
               <div className="flex items-center gap-1">
                 <span className="text-[9px] text-red-600 font-bold uppercase mr-1">¿Eliminar?</span>
