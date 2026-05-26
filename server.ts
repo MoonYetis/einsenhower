@@ -167,7 +167,7 @@ app.get("/api/tasks", (req, res) => {
 
 // 2. Crear una nueva tarea colaborativa
 app.post("/api/tasks", (req, res) => {
-  const { title, description, quadrant, assigned_to, created_by } = req.body;
+  const { title, description, quadrant, assigned_to, created_by, due_date } = req.body;
   
   if (!title) {
     return res.status(400).json({ error: "El título es obligatorio" });
@@ -191,6 +191,7 @@ app.post("/api/tasks", (req, res) => {
     created_by: created_by || "Osman Marin",
     assigned_to: assigned_to || "Osman Marin",
     created_at: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + ", Hoy",
+    due_date: due_date || "Sin plazo",
     notes: [],
     attachments: [],
     delegation_histories: [
@@ -211,7 +212,7 @@ app.post("/api/tasks", (req, res) => {
 // 3. Modificar cuadrante o estado de una tarea (Trazando delegación si aplica)
 app.patch("/api/tasks/:id", (req, res) => {
   const { id } = req.params;
-  const { status, quadrant, assigned_to } = req.body;
+  const { status, quadrant, assigned_to, due_date } = req.body;
   const tasks = readTasks();
   const taskIndex = tasks.findIndex(t => t.id === id);
 
@@ -235,6 +236,7 @@ app.patch("/api/tasks/:id", (req, res) => {
 
   if (status !== undefined) task.status = status;
   if (quadrant !== undefined) task.quadrant = quadrant;
+  if (due_date !== undefined) task.due_date = due_date;
 
   tasks[taskIndex] = task;
   writeTasks(tasks);

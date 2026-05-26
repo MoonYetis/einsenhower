@@ -225,6 +225,7 @@ export default function App() {
   const [newDescription, setNewDescription] = useState("");
   const [newQuadrant, setNewQuadrant] = useState<"Q1" | "Q2" | "Q3" | "Q4">("Q1");
   const [newAssignee, setNewAssignee] = useState("Marie Puscan");
+  const [newDueDate, setNewDueDate] = useState("");
 
   // Estado para redactar notas interactivas secuenciales
   const [newNoteContent, setNewNoteContent] = useState("");
@@ -270,6 +271,64 @@ export default function App() {
     setLoginError("");
   };
 
+  // Iniciar el arrastre de una tarea de la matriz
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  // Permitir la zona de soltar de la matriz de Eisenhower
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  // Soltar tarea en nueva sección de cuadrante
+  const handleDrop = async (e: React.DragEvent, targetQuadrant: "Q1" | "Q2" | "Q3" | "Q4") => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("text/plain");
+    if (!taskId) return;
+
+    // Actualización optimista del cuadrante en el estado react
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, quadrant: targetQuadrant } : t))
+    );
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quadrant: targetQuadrant })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Fallo de API al actualizar cuadrante con drag and drop:", err);
+    }
+  };
+
+  // Modificar la fecha límite / plazo de la tarea
+  const handleUpdateDueDate = async (taskId: string, newDate: string) => {
+    // Actualización local
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, due_date: newDate } : t))
+    );
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ due_date: newDate })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Fallo de API al actualizar fecha de plazo:", err);
+    }
+  };
+
   // Agregar una tarea interactiva real en el Servidor
   const handleCreateTaskSim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,7 +345,8 @@ export default function App() {
           description: newDescription,
           quadrant: newQuadrant,
           assigned_to: newAssignee,
-          created_by: currentUserName
+          created_by: currentUserName,
+          due_date: newDueDate || "Sin plazo"
         })
       });
 
@@ -309,6 +369,7 @@ export default function App() {
         created_by: currentUserName,
         assigned_to: newAssignee,
         created_at: "Ahora mismo",
+        due_date: newDueDate || "Sin plazo",
         notes: [],
         attachments: [],
         delegation_histories: [
@@ -327,6 +388,7 @@ export default function App() {
     setShowAddTaskModal(false);
     setNewTitle("");
     setNewDescription("");
+    setNewDueDate("");
   };
 
   // Agregar una nota real en la DB
@@ -931,7 +993,11 @@ services:
               <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-slate-200">
                 
                 {/* Q1: HACER PRIMERO */}
-                <div className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, "Q1")}
+                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-red-200 transition-colors"
+                >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-1.5">
                       Q1: Acción Inmediata
@@ -946,7 +1012,9 @@ services:
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className={`p-3 rounded border transition-all cursor-pointer text-left relative group ${
+                        draggable="true"
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
                           selectedTaskId === task.id
                             ? "border-red-500 bg-red-50/20 shadow-xs"
                             : "border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
@@ -962,7 +1030,11 @@ services:
                         </div>
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-600 font-bold">{task.assigned_to}</span>
-                          <span className="text-slate-400 font-medium">Asignado</span>
+                          {task.due_date && (
+                            <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[8px] font-sans font-black flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                              ⏱️ {task.due_date}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -970,7 +1042,11 @@ services:
                 </div>
 
                 {/* Q2: PLANIFICAR */}
-                <div className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, "Q2")}
+                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-indigo-200 transition-colors"
+                >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-1.5">
                       Q2: Enfoque Estratégico
@@ -985,7 +1061,9 @@ services:
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className={`p-3 rounded border transition-all cursor-pointer text-left relative group ${
+                        draggable="true"
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
                           selectedTaskId === task.id
                             ? "border-indigo-500 bg-indigo-50/20 shadow-xs"
                             : "border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
@@ -1001,7 +1079,11 @@ services:
                         </div>
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-600 font-bold">{task.assigned_to}</span>
-                          <span className="text-slate-450">Planificado</span>
+                          {task.due_date && (
+                            <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[8px] font-sans font-black flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                              ⏱️ {task.due_date}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1009,7 +1091,11 @@ services:
                 </div>
 
                 {/* Q3: DELEGAR */}
-                <div className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, "Q3")}
+                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-amber-200 transition-colors"
+                >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
                       Q3: Cola de Delegación
@@ -1024,7 +1110,9 @@ services:
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className={`p-3 rounded border transition-all cursor-pointer text-left relative group ${
+                        draggable="true"
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
                           selectedTaskId === task.id
                             ? "border-amber-400 bg-amber-50/20 shadow-xs"
                             : "border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
@@ -1040,7 +1128,11 @@ services:
                         </div>
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-amber-800 font-bold">{task.assigned_to}</span>
-                          <span className="text-slate-400">Delegado</span>
+                          {task.due_date && (
+                            <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[8px] font-sans font-black flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                              ⏱️ {task.due_date}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1048,7 +1140,11 @@ services:
                 </div>
 
                 {/* Q4: ELIMINAR */}
-                <div className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, "Q4")}
+                  className="bg-white p-5 min-h-[14rem] max-h-[14rem] overflow-y-auto flex flex-col justify-start border border-dashed border-transparent hover:border-slate-300 transition-colors"
+                >
                   <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                       Q4: Baja Prioridad
@@ -1063,7 +1159,9 @@ services:
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
-                        className={`p-3 rounded border transition-all cursor-pointer text-left relative group ${
+                        draggable="true"
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
                           selectedTaskId === task.id
                             ? "border-slate-500 bg-slate-100 shadow-xs"
                             : "border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
@@ -1079,7 +1177,11 @@ services:
                         </div>
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-400 font-bold">{task.assigned_to}</span>
-                          <span className="text-slate-400">Descartable</span>
+                          {task.due_date && (
+                            <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[8px] font-sans font-black flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                              ⏱️ {task.due_date}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1297,6 +1399,19 @@ services:
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1 font-mono">
+                  Modificar Plazo / Fecha Límite:
+                </label>
+                <input
+                  type="text"
+                  value={currentTask.due_date || ""}
+                  onChange={(e) => handleUpdateDueDate(currentTask.id, e.target.value)}
+                  placeholder="Ej: Inmediata, Hoy, 29 de Mayo"
+                  className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:border-slate-900 focus:outline-none bg-white font-sans cursor-text"
+                />
+              </div>
             </div>
 
             {/* Tabla Simple de Metadatos */}
@@ -1499,6 +1614,19 @@ services:
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                  Plazo / Fecha Límite:
+                </label>
+                <input
+                  type="text"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  placeholder="Por ejemplo: Mañana, Lunes 1 de Junio, Inmediata"
+                  className="w-full text-xs p-3 border border-slate-200 rounded focus:border-slate-900 focus:outline-none font-sans"
+                />
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex justify-end gap-2">
