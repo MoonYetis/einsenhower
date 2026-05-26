@@ -187,6 +187,12 @@ export default function App() {
 
   // Tarea seleccionada activa
   const [selectedTaskId, setSelectedTaskId] = useState<string>("#492");
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
+  
+  React.useEffect(() => {
+    setDeleteConfirmTaskId(null);
+  }, [selectedTaskId]);
+
   const currentTask = tasks.find(t => t.id === selectedTaskId) || tasks[0] || {
     id: "#492",
     title: "Cargando tarea...",
@@ -449,25 +455,27 @@ export default function App() {
 
   // Eliminar una tarea real en la base de datos
   const handleDeleteTaskSim = async (id: string) => {
-    if (confirm("¿Estás seguro de eliminar esta tarea de la base de datos de MatrixOS?")) {
-      try {
-        const res = await fetch(`/api/tasks/${id}`, {
-          method: "DELETE"
-        });
-        if (res.ok) {
-          const remaining = tasks.filter(t => t.id !== id);
-          setTasks(remaining);
-          if (remaining.length > 0) {
-            setSelectedTaskId(remaining[0].id);
-          }
-        }
-      } catch (err) {
-        console.warn("Fallo de API al eliminar, haciendo borrado en memoria:", err);
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
         const remaining = tasks.filter(t => t.id !== id);
         setTasks(remaining);
         if (remaining.length > 0) {
           setSelectedTaskId(remaining[0].id);
+        } else {
+          setSelectedTaskId("");
         }
+      }
+    } catch (err) {
+      console.warn("Fallo de API al eliminar, haciendo borrado en memoria:", err);
+      const remaining = tasks.filter(t => t.id !== id);
+      setTasks(remaining);
+      if (remaining.length > 0) {
+        setSelectedTaskId(remaining[0].id);
+      } else {
+        setSelectedTaskId("");
       }
     }
   };
@@ -1325,13 +1333,31 @@ services:
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-555 flex items-center gap-1.5 font-sans">
               <Info className="w-3.5 h-3.5 text-indigo-600" /> Detalle de Tarea Seleccionada
             </span>
-            <button
-              onClick={() => handleDeleteTaskSim(currentTask.id)}
-              className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-all cursor-pointer"
-              title="Eliminar Tarea"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {deleteConfirmTaskId === currentTask.id ? (
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-red-600 font-bold uppercase mr-1">¿Eliminar?</span>
+                <button
+                  onClick={() => handleDeleteTaskSim(currentTask.id)}
+                  className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[9px] font-sans font-black uppercase transition-all shadow-xs cursor-pointer"
+                >
+                  Sí
+                </button>
+                <button
+                  onClick={() => setDeleteConfirmTaskId(null)}
+                  className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[9px] font-sans font-black uppercase transition-all cursor-pointer"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirmTaskId(currentTask.id)}
+                className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-all cursor-pointer"
+                title="Eliminar Tarea"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Único Contenedor Central con Scrollbar Natural y Fluido para Todo el Detalle */}
