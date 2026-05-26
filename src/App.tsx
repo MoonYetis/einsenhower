@@ -76,14 +76,22 @@ export default function App() {
   const [copied, setCopied] = useState<string | null>(null);
   const [activeCodeTab, setActiveCodeTab] = useState<"database" | "main" | "models" | "schemas" | "docker">("main");
   
-  // Lista de usuarios ficticios del equipo para asignaciones complejas
+  // Lista de usuarios legítimos del equipo asignada a la matriz de Eisenhower
   const mockTeamUsers = [
-    { id: 1, name: "David Líder", email: "david.lead@matrixos.io", avatar: "DL" },
-    { id: 2, name: "Ana Administradora DF", email: "ana.db@matrixos.io", avatar: "AA" },
-    { id: 3, name: "Marcos Dev", email: "marco.dev@matrixos.io", avatar: "MD" },
-    { id: 4, name: "Sofía DevOps", email: "sofia.ops@matrixos.io", avatar: "SO" },
-    { id: 5, name: "Clara Documentación", email: "clara.docs@matrixos.io", avatar: "CD" }
+    { id: 1, name: "Osman Marin", email: "osman.marin@matrixos.io", avatar: "OM", password: "osman" },
+    { id: 2, name: "Marie Puscan", email: "marie.puscan@matrixos.io", avatar: "MP", password: "marie" }
   ];
+
+  // Estado del usuario activo autenticado (Persistido de manera local en el navegador)
+  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; email: string; avatar: string } | null>(() => {
+    const stored = localStorage.getItem("matrix_user");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  // Estado para el control del login interactivo
+  const [loginSelectedUser, setLoginSelectedUser] = useState<number | null>(null);
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   // Estado de tareas simulación interactiva con hilos secuenciales reales en React
   const [tasks, setTasks] = useState<TaskSim[]>([
@@ -93,34 +101,33 @@ export default function App() {
       description: "La migración hacia Pydantic v2 provocó una omisión involuntaria de validación en el gestor de sesiones de FastAPI. Requiere atención urgente.",
       quadrant: "Q1",
       status: "IN_PROGRESS",
-      created_by: "Sistema de Seguridad Automático",
-      assigned_to: "David Líder",
+      created_by: "Osman Marin",
+      assigned_to: "Marie Puscan",
       created_at: "Hoy, 08:30 AM",
       due_date: "Inmediata",
       notes: [
-        { id: 1, user: "Marcos Dev", userEmail: "marco.dev@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
-        { id: 2, user: "Ana Administradora DF", userEmail: "ana.db@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
+        { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
+        { id: 2, user: "Osman Marin", userEmail: "osman.marin@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
       ],
       attachments: [
         { id: 1, file_name: "log_vulnerabilidad_auth.txt", file_path: "/uploads/log_vulnerabilidad_auth.txt", uploaded_at: "Hoy, 09:15 AM" }
       ],
       delegation_histories: [
-        { id: 1, from_user: "Bot de Seguridad", to_user: "David Líder", assigned_at: "Hoy, 08:30 AM" },
-        { id: 2, from_user: "David Líder", to_user: "Marcos Dev", assigned_at: "Hoy, 09:00 AM" }
+        { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hoy, 08:30 AM" }
       ]
     },
     {
       id: "#381",
       title: "Optimización de Índices en Base de Datos PostgreSQL 16",
-      description: "Analizar las consultas lentas sobre los filtros cruzados de tareas y equipos. Agregar índices compuestos sobre (team_id, quadrant, status) para acelerar FastAPI.",
+      description: "Analizar las consultas lentas sobre los filtros cruzados de tareas y equipos. Agregar índices compuestos sobre (team_id, quadrant, status) para acelerar consultas.",
       quadrant: "Q2",
       status: "TODO",
-      created_by: "Ana Administradora DF",
-      assigned_to: "Ana Administradora DF",
+      created_by: "Marie Puscan",
+      assigned_to: "Marie Puscan",
       created_at: "Ayer, 14:20 PM",
       due_date: "Viernes, 29 de Mayo",
       notes: [
-        { id: 1, user: "Ana Administradora DF", userEmail: "ana.db@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado en equipos de más de 50 personas. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
+        { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
       ],
       attachments: [],
       delegation_histories: []
@@ -131,8 +138,8 @@ export default function App() {
       description: "Configurar los healthchecks automáticos de pg_isready dentro del Docker Compose y optimizar Dockerfile para compilación asincrónica en Cloud Run.",
       quadrant: "Q2",
       status: "TODO",
-      created_by: "Sofía DevOps",
-      assigned_to: "Sofía DevOps",
+      created_by: "Osman Marin",
+      assigned_to: "Osman Marin",
       created_at: "Hace 2 días",
       due_date: "Lunes, 1 de Junio",
       notes: [],
@@ -147,16 +154,16 @@ export default function App() {
       description: "Escribir las guías sobre cómo generar scripts de migración asincrónicos compatibles con asyncpg y SQLAlchemy 2.0.",
       quadrant: "Q3",
       status: "TODO",
-      created_by: "David Líder",
-      assigned_to: "Clara Documentación",
+      created_by: "Osman Marin",
+      assigned_to: "Marie Puscan",
       created_at: "Hace 3 días",
       due_date: "Fin de mes",
       notes: [
-        { id: 1, user: "Clara Documentación", userEmail: "clara.docs@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
+        { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
       ],
       attachments: [],
       delegation_histories: [
-        { id: 1, from_user: "David Líder", to_user: "Clara Documentación", assigned_at: "Hace 3 días" }
+        { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 3 días" }
       ]
     },
     {
@@ -165,13 +172,13 @@ export default function App() {
       description: "Q4: Baja prioridad. Depurar registros remotos redundantes, congelar contenedores legados y migrar esquemas de prueba remanentes.",
       quadrant: "Q4",
       status: "DONE",
-      created_by: "David Líder",
-      assigned_to: "Marcos Dev",
+      created_by: "Osman Marin",
+      assigned_to: "Marie Puscan",
       created_at: "Hace 1 semana",
       notes: [],
       attachments: [],
       delegation_histories: [
-        { id: 1, from_user: "David Líder", to_user: "Marcos Dev", assigned_at: "Hace 1 semana" }
+        { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 1 semana" }
       ]
     }
   ]);
@@ -187,8 +194,8 @@ export default function App() {
     notes: [],
     attachments: [],
     delegation_histories: [],
-    assigned_to: "David Líder",
-    created_by: "Sistema"
+    assigned_to: "Osman Marin",
+    created_by: "Osman Marin"
   };
 
   // Carga inicial y obtención en tiempo real de la API
@@ -215,7 +222,7 @@ export default function App() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newQuadrant, setNewQuadrant] = useState<"Q1" | "Q2" | "Q3" | "Q4">("Q1");
-  const [newAssignee, setNewAssignee] = useState("Marcos Dev");
+  const [newAssignee, setNewAssignee] = useState("Marie Puscan");
 
   // Estado para redactar notas interactivas secuenciales
   const [newNoteContent, setNewNoteContent] = useState("");
@@ -226,10 +233,47 @@ export default function App() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  // Enviar credenciales de inicio de sesión real/simulado
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginSelectedUser) {
+      setLoginError("Por favor, selecciona un miembro del equipo.");
+      return;
+    }
+    const userObj = mockTeamUsers.find(u => u.id === loginSelectedUser);
+    if (!userObj) return;
+
+    if (loginPassword.trim().toLowerCase() === userObj.password) {
+      const sessionUser = {
+        id: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        avatar: userObj.avatar
+      };
+      localStorage.setItem("matrix_user", JSON.stringify(sessionUser));
+      setCurrentUser(sessionUser);
+      setLoginError("");
+      setLoginPassword("");
+    } else {
+      setLoginError(`Contraseña incorrecta. (Prueba con "${userObj.password}")`);
+    }
+  };
+
+  // Cerrar sesión activa del equipo
+  const handleLogout = () => {
+    localStorage.removeItem("matrix_user");
+    setCurrentUser(null);
+    setLoginSelectedUser(null);
+    setLoginPassword("");
+    setLoginError("");
+  };
+
   // Agregar una tarea interactiva real en el Servidor
   const handleCreateTaskSim = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
+
+    const currentUserName = currentUser?.name || "Osman Marin";
 
     try {
       const res = await fetch("/api/tasks", {
@@ -240,7 +284,7 @@ export default function App() {
           description: newDescription,
           quadrant: newQuadrant,
           assigned_to: newAssignee,
-          created_by: "David Líder (Actual)"
+          created_by: currentUserName
         })
       });
 
@@ -260,7 +304,7 @@ export default function App() {
         description: newDescription || "Sin descripción adicional.",
         quadrant: newQuadrant,
         status: "TODO",
-        created_by: "David Líder (Actual)",
+        created_by: currentUserName,
         assigned_to: newAssignee,
         created_at: "Ahora mismo",
         notes: [],
@@ -268,7 +312,7 @@ export default function App() {
         delegation_histories: [
           {
             id: Date.now(),
-            from_user: "David Líder (Ejecutivo)",
+            from_user: currentUserName,
             to_user: newAssignee,
             assigned_at: "Ahora mismo"
           }
@@ -288,13 +332,16 @@ export default function App() {
     e.preventDefault();
     if (!newNoteContent.trim() || !currentTask) return;
 
+    const currentUserName = currentUser?.name || "Osman Marin";
+    const currentUserEmail = currentUser?.email || "osman.marin@matrixos.io";
+
     try {
       const res = await fetch(`/api/tasks/${currentTask.id}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: newNoteContent,
-          user: "David Líder (Actual)"
+          user: currentUserName
         })
       });
 
@@ -316,8 +363,8 @@ export default function App() {
       console.warn("Fallo de API, usando inserción local de comentario:", err);
       const newNoteObj: TaskNoteSim = {
         id: Date.now(),
-        user: "David Líder (Actual)",
-        userEmail: "david.lead@matrixos.io",
+        user: currentUserName,
+        userEmail: currentUserEmail,
         content: newNoteContent,
         created_at: "Hace unos segundos"
       };
@@ -629,6 +676,117 @@ services:
     depends_on:
       - db`;
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-indigo-500 selection:text-white relative overflow-hidden">
+        {/* Diseños de fondo modernos al estilo Matrix */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.08),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.05),transparent_40%)]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+
+        <div className="w-full max-w-sm bg-slate-900 border border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-2xl relative z-10 backdrop-blur-md">
+          <div className="text-center mb-6">
+            <div className="inline-flex w-12 h-12 bg-indigo-600 rounded-xl items-center justify-center text-white font-mono text-2xl font-black tracking-tighter mb-4 shadow-lg shadow-indigo-600/25">
+              M
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-white uppercase font-sans">
+              Matrix<span className="text-indigo-500">OS</span>
+            </h1>
+            <p className="text-xs text-slate-400 font-mono mt-1 uppercase tracking-wider">
+              Matriz de Eisenhower Colaborativa
+            </p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-5">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2 font-mono">
+                Selecciona tu Cuenta:
+              </label>
+              <div className="grid grid-cols-2 gap-3 pb-1">
+                {mockTeamUsers.map(user => {
+                  const isSelected = loginSelectedUser === user.id;
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => {
+                        setLoginSelectedUser(user.id);
+                        setLoginError("");
+                      }}
+                      className={`p-4 border rounded-xl text-center cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-slate-800/80 border-indigo-500 shadow-md shadow-indigo-500/10"
+                          : "bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto mb-2 text-white font-bold text-xs select-none">
+                        {user.avatar}
+                      </div>
+                      <div className="text-xs font-bold text-white tracking-tight leading-tight">
+                        {user.name}
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono mt-1 block select-none">
+                        {user.avatar === "OM" ? "Director Plan" : "Líder de Dev"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {loginSelectedUser && (
+              <div className="space-y-2 animate-fade-in">
+                <div className="flex justify-between items-center text-[10px] font-mono">
+                  <label className="font-black uppercase tracking-wider text-slate-400">
+                    Contraseña del Equipo:
+                  </label>
+                  <span className="text-slate-500">
+                    Sugerida: <span className="text-indigo-450 underline font-bold">{mockTeamUsers.find(u => u.id === loginSelectedUser)?.password}</span>
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="password"
+                    placeholder="Contraseña integrada"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {loginError && (
+              <div className="p-3 bg-red-950/50 border border-red-900/80 text-rose-300 text-xs rounded-lg text-center font-mono leading-relaxed">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={!loginSelectedUser}
+              className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-widest text-white transition-all select-none cursor-pointer flex items-center justify-center gap-1.5 ${
+                loginSelectedUser
+                  ? "bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95"
+                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
+              }`}
+            >
+              <span>Acceder a la Matriz</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </form>
+
+          <div className="text-center mt-6 text-[9px] text-slate-500 font-mono uppercase tracking-wider select-none">
+            Consola de Seguridad Integrada • v1.1.2
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden selection:bg-slate-900 selection:text-white">
       
@@ -654,7 +812,24 @@ services:
           </nav>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 md:gap-5">
+          {/* Avatar e Información de Sesión Activa */}
+          {currentUser && (
+            <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 py-1 px-3 rounded-full text-xs text-slate-700 select-none">
+              <span className="w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center text-[9px] font-mono text-white font-bold shrink-0">
+                {currentUser.avatar}
+              </span>
+              <span className="font-bold truncate hidden sm:inline max-w-[120px]">{currentUser.name}</span>
+              <button 
+                onClick={handleLogout}
+                className="text-[9px] uppercase font-bold text-slate-400 hover:text-rose-600 border-l border-slate-300 pl-2 ml-1 cursor-pointer transition-colors"
+                title="Cerrar sesión activa del equipo"
+              >
+                Salir
+              </button>
+            </div>
+          )}
+
           {/* Listado de Miembros del Equipo de Arquitectura */}
           <div className="hidden sm:flex -space-x-2 items-center">
             {mockTeamUsers.map(user => (

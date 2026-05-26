@@ -38,34 +38,33 @@ const defaultTasks = [
     description: "La migración hacia Pydantic v2 provocó una omisión involuntaria de validación en el gestor de sesiones de FastAPI. Requiere atención urgente.",
     quadrant: "Q1",
     status: "IN_PROGRESS",
-    created_by: "Sistema de Seguridad Automático",
-    assigned_to: "David Líder",
+    created_by: "Osman Marin",
+    assigned_to: "Marie Puscan",
     created_at: "Hoy, 08:30 AM",
     due_date: "Inmediata",
     notes: [
-      { id: 1, user: "Marcos Dev", userEmail: "marco.dev@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
-      { id: 2, user: "Ana Administradora DF", userEmail: "ana.db@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
+      { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
+      { id: 2, user: "Osman Marin", userEmail: "osman.marin@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
     ],
     attachments: [
       { id: 1, file_name: "log_vulnerabilidad_auth.txt", file_path: "/uploads/log_vulnerabilidad_auth.txt", uploaded_at: "Hoy, 09:15 AM" }
     ],
     delegation_histories: [
-      { id: 1, from_user: "Bot de Seguridad", to_user: "David Líder", assigned_at: "Hoy, 08:30 AM" },
-      { id: 2, from_user: "David Líder", to_user: "Marcos Dev", assigned_at: "Hoy, 09:00 AM" }
+      { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hoy, 08:30 AM" }
     ]
   },
   {
     id: "#381",
     title: "Optimización de Índices en Base de Datos PostgreSQL 16",
-    description: "Analizar las consultas lentas sobre los filtros cruzados de tareas y equipos. Agregar índices compuestos sobre (team_id, quadrant, status) para acelerar FastAPI.",
+    description: "Analizar las consultas lentas sobre los filtros cruzados de tareas y equipos. Agregar índices compuestos sobre (team_id, quadrant, status) para acelerar consultas.",
     quadrant: "Q2",
     status: "TODO",
-    created_by: "Ana Administradora DF",
-    assigned_to: "Ana Administradora DF",
+    created_by: "Marie Puscan",
+    assigned_to: "Marie Puscan",
     created_at: "Ayer, 14:20 PM",
     due_date: "Viernes, 29 de Mayo",
     notes: [
-      { id: 1, user: "Ana Administradora DF", userEmail: "ana.db@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado en equipos de más de 50 personas. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
+      { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
     ],
     attachments: [],
     delegation_histories: []
@@ -76,8 +75,8 @@ const defaultTasks = [
     description: "Configurar los healthchecks automáticos de pg_isready dentro del Docker Compose y optimizar Dockerfile para compilación asincrónica en Cloud Run.",
     quadrant: "Q2",
     status: "TODO",
-    created_by: "Sofía DevOps",
-    assigned_to: "Sofía DevOps",
+    created_by: "Osman Marin",
+    assigned_to: "Osman Marin",
     created_at: "Hace 2 días",
     due_date: "Lunes, 1 de Junio",
     notes: [],
@@ -92,16 +91,16 @@ const defaultTasks = [
     description: "Escribir las guías sobre cómo generar scripts de migración asincrónicos compatibles con asyncpg y SQLAlchemy 2.0.",
     quadrant: "Q3",
     status: "TODO",
-    created_by: "David Líder",
-    assigned_to: "Clara Documentación",
+    created_by: "Osman Marin",
+    assigned_to: "Marie Puscan",
     created_at: "Hace 3 días",
     due_date: "Fin de mes",
     notes: [
-      { id: 1, user: "Clara Documentación", userEmail: "clara.docs@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
+      { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
     ],
     attachments: [],
     delegation_histories: [
-      { id: 1, from_user: "David Líder", to_user: "Clara Documentación", assigned_at: "Hace 3 días" }
+      { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 3 días" }
     ]
   },
   {
@@ -110,13 +109,13 @@ const defaultTasks = [
     description: "Q4: Baja prioridad. Depurar registros remotos redundantes, congelar contenedores legados y migrar esquemas de prueba remanentes.",
     quadrant: "Q4",
     status: "DONE",
-    created_by: "David Líder",
-    assigned_to: "Marcos Dev",
+    created_by: "Osman Marin",
+    assigned_to: "Marie Puscan",
     created_at: "Hace 1 semana",
     notes: [],
     attachments: [],
     delegation_histories: [
-      { id: 1, from_user: "David Líder", to_user: "Marcos Dev", assigned_at: "Hace 1 semana" }
+      { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 1 semana" }
     ]
   }
 ];
@@ -126,7 +125,19 @@ function readTasks(): any[] {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Validar si es la base de datos antigua y purgarla si contiene tester antiguo
+      const hasOldUsers = parsed.some((t: any) => 
+        t.assigned_to === "David Líder" || 
+        t.created_by === "David Líder" || 
+        (t.notes && t.notes.some((n: any) => n.user === "Marcos Dev"))
+      );
+      if (hasOldUsers) {
+        console.log("Detectados usuarios obsoletos en tasks.json, reiniciando base de datos...");
+        fs.writeFileSync(DATA_FILE, JSON.stringify(defaultTasks, null, 2), "utf-8");
+        return [...defaultTasks];
+      }
+      return parsed;
     }
   } catch (error) {
     console.error("Error leyendo archivo de tareas:", error);
@@ -177,16 +188,16 @@ app.post("/api/tasks", (req, res) => {
     description: description || "",
     quadrant: quadrant || "Q1",
     status: "TODO",
-    created_by: created_by || "Usuario Integrado",
-    assigned_to: assigned_to || "David Líder",
+    created_by: created_by || "Osman Marin",
+    assigned_to: assigned_to || "Osman Marin",
     created_at: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + ", Hoy",
     notes: [],
     attachments: [],
     delegation_histories: [
       {
         id: Date.now(),
-        from_user: "David Líder (Ejecutivo)",
-        to_user: assigned_to || "David Líder",
+        from_user: created_by || "Osman Marin",
+        to_user: assigned_to || "Osman Marin",
         assigned_at: "Hoy, Justo Ahora"
       }
     ]
@@ -265,8 +276,8 @@ app.post("/api/tasks/:id/notes", (req, res) => {
 
   const newNote = {
     id: Date.now(),
-    user: user || "David Líder (Actual)",
-    userEmail: "david.lead@matrixos.io",
+    user: user || "Osman Marin",
+    userEmail: user === "Marie Puscan" ? "marie.puscan@matrixos.io" : "osman.marin@matrixos.io",
     content: content,
     created_at: "Hace un momento"
   };
