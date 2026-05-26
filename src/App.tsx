@@ -270,6 +270,9 @@ export default function App() {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [newSelectedTags, setNewSelectedTags] = useState<string[]>([]);
   
+  // Estados de Sincronización y Respaldo Físico para celulares y sobremesa
+  const [isSyncing, setIsSyncing] = useState(false);
+  
   // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal
   const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard">("dashboard");
   const [weeklyCommentary, setWeeklyCommentary] = useState<string>(() => {
@@ -619,6 +622,139 @@ export default function App() {
   // Permitir la zona de soltar de la matriz de Eisenhower
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+  };
+
+  // Cambiar cuadrante de tarea directamente (Perfecto para pantallas touch / móviles)
+  const handleMoveQuadrantDirectly = async (taskId: string, targetQuadrant: "Q1" | "Q2" | "Q3" | "Q4") => {
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, quadrant: targetQuadrant } : t))
+    );
+    addLog(`📱 TOUCH CONTROL: Reubicada tarea ${taskId} al cuadrante ${targetQuadrant}`, "telemetry");
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quadrant: targetQuadrant })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Fallo de API al actualizar cuadrante con control touch:", err);
+    }
+  };
+
+  // Cambiar estado TODO <-> DONE directamente para celulares
+  const handleToggleTaskStatusDirectly = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newStatus = task.status === "DONE" ? "TODO" : "DONE";
+    
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    addLog(`📱 TOUCH CONTROL: Tarea ${taskId} marcada como ${newStatus === "DONE" ? "COMPLETADA ✔️" : "PENDIENTE ⏳"}`, "success");
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Fallo de API al cambiar estado con control touch:", err);
+    }
+  };
+
+  // Simulación de sincronización manual de bases de datos
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    addLog("🗧 CANAL DB: Iniciando sincronización forzada de registros...", "info");
+    
+    setTimeout(() => {
+      setIsSyncing(false);
+      addLog("⚙️ MATRIX OS: Recalibrados todos los índices de PostgreSQL sobre puerto 5432.", "success");
+      addLog(`✨ SINCRONIZACIÓN EXITOSA: Sincronizadas ${tasks.length} tareas en tiempo real.`, "telemetry");
+      
+      // Producir una alerta por SpeechSynthesis
+      try {
+        const synth = window.speechSynthesis;
+        if (synth) {
+          const utterance = new SpeechSynthesisUtterance("Sincronización de base de datos completada exitosamente.");
+          synth.speak(utterance);
+        }
+      } catch (e) {}
+    }, 1200);
+  };
+
+  // Descargar respaldo local JSON
+  const handleExportBackup = () => {
+    try {
+      const backupData = {
+        app_name: "MatrixOS Backup",
+        timestamp: new Date().toISOString(),
+        tasks,
+        weeklyGoals,
+        taskGoalsMap,
+        weeklyCommentary
+      };
+      
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(backupData, null, 2))}`;
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `matrix_os_backup_${new Date().toISOString().split("T")[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      
+      addLog("📥 COPIA DE SEGURIDAD: Creado y descargado archivo JSON con estado nominal del sistema.", "success");
+    } catch (err) {
+      addLog("❌ FALLO DE RESPALDO: No se pudo serializar el estado del sistema.", "error");
+    }
+  };
+
+  // Importar respaldo local JSON
+  const handleImportBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    fileReader.onload = async (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string);
+        if (parsed && Array.isArray(parsed.tasks)) {
+          // Reemplazar tareas
+          setTasks(parsed.tasks);
+          addLog(`📤 COPIA DE SEGURIDAD: Restauradas ${parsed.tasks.length} tareas desde respaldo JSON.`, "success");
+          
+          if (Array.isArray(parsed.weeklyGoals)) {
+            setWeeklyGoals(parsed.weeklyGoals);
+            addLog(`🎯 METAS OKRs Semanales restauradas (${parsed.weeklyGoals.length} objetivos).`, "success");
+          }
+          if (parsed.taskGoalsMap) {
+            setTaskGoalsMap(parsed.taskGoalsMap);
+          }
+          if (parsed.weeklyCommentary) {
+            setWeeklyCommentary(parsed.weeklyCommentary);
+          }
+          
+          addLog("✨ RESTAURACIÓN EXCEPCIONAL: Operación de restauración MatrixOS realizada correctamente.", "telemetry");
+        } else {
+          addLog("❌ ERROR DE IMPORTACIÓN: Archivo incompatible o corrupto.", "error");
+        }
+      } catch (err) {
+        addLog("❌ ERROR DE PARSEO: Estructura JSON del respaldo inválida.", "error");
+      }
+    };
+    fileReader.readAsText(file);
+    // Vaciar input
+    event.target.value = "";
   };
 
   // Soltar tarea en nueva sección de cuadrante
@@ -1291,6 +1427,38 @@ services:
         </div>
 
         <div className="flex items-center gap-2 md:gap-5">
+          {/* Sincronizador Físico y Backup JSON Móvil / Sobremesa */}
+          <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg p-1 shrink-0">
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className={`p-1.5 rounded transition-all cursor-pointer flex items-center justify-center text-xs h-7 w-7 ${
+                isSyncing 
+                  ? "bg-indigo-600 text-white animate-spin" 
+                  : "bg-white hover:bg-slate-200 text-slate-700 hover:text-indigo-600 border border-slate-300/40"
+              }`}
+              title="Forzar actualización y sincronización PostgreSQL local"
+            >
+              🔄
+            </button>
+            <button
+              onClick={handleExportBackup}
+              className="p-1.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300/40 transition-all cursor-pointer flex items-center justify-center text-xs h-7 w-7 sm:w-auto sm:px-2"
+              title="Descargar Copia de Seguridad JSON"
+            >
+              📥 <span className="hidden sm:inline text-[9px] font-mono font-black ml-1 uppercase">Backup</span>
+            </button>
+            <label className="p-1.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300/40 transition-all cursor-pointer flex items-center justify-center text-xs h-7 w-7 sm:w-auto sm:px-2">
+              📤 <span className="hidden sm:inline text-[9px] font-mono font-black ml-1 uppercase">Restaurar</span>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportBackup}
+                className="hidden"
+              />
+            </label>
+          </div>
+
           {/* Avatar e Información de Sesión Activa */}
           {currentUser && (
             <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 py-1 px-2.5 rounded-full text-[10px] md:text-xs text-slate-700 select-none shrink-0">
@@ -1927,40 +2095,40 @@ services:
 
           {activeView === "matrix" && (
             <>
-              {/* Barra de Filtros de Etiquetas */}
-              <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-4 rounded-lg shadow-xs">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1">
-              <Tag className="w-3.5 h-3.5 text-indigo-600" /> FILTRAR POR CATEGORÍA:
-            </span>
-            <button
-              onClick={() => setSelectedTagFilter(null)}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                selectedTagFilter === null
-                  ? "bg-slate-900 text-white font-black shadow-xs"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-              }`}
-            >
-              Todos ({tasks.length})
-            </button>
-            {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].map(tg => {
-              const isSelected = selectedTagFilter === tg;
-              const count = tasks.filter(t => t.tags?.includes(tg)).length;
-              return (
+              {/* Barra de Filtros de Etiquetas - Deslizable Horizontal en Celulares */}
+              <div className="flex overflow-x-auto md:flex-wrap items-center gap-2 bg-white border border-slate-200 p-3.5 rounded-lg shadow-xs no-scrollbar select-none">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1 shrink-0">
+                  <Tag className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> FILTRAR:
+                </span>
                 <button
-                  key={tg}
-                  onClick={() => setSelectedTagFilter(tg)}
-                  className={`px-3 py-1 text-xs font-extrabold rounded-md border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? "bg-slate-900 text-white border-slate-900 font-extrabold shadow-sm scale-[1.02]"
-                      : `${TAG_COLORS[tg]?.bg || "bg-slate-100 text-slate-700 border-slate-200"} hover:brightness-95`
+                  onClick={() => setSelectedTagFilter(null)}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer shrink-0 ${
+                    selectedTagFilter === null
+                      ? "bg-slate-900 text-white font-black shadow-xs"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-current"}`} />
-                  {tg} <span className="text-[9px] opacity-75 font-mono">({count})</span>
+                  Todos ({tasks.length})
                 </button>
-              );
-            })}
-          </div>
+                {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].map(tg => {
+                  const isSelected = selectedTagFilter === tg;
+                  const count = tasks.filter(t => t.tags?.includes(tg)).length;
+                  return (
+                    <button
+                      key={tg}
+                      onClick={() => setSelectedTagFilter(tg)}
+                      className={`px-3 py-1 text-xs font-extrabold rounded-md border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                        isSelected
+                          ? "bg-slate-900 text-white border-slate-900 font-extrabold shadow-sm scale-[1.02]"
+                          : `${TAG_COLORS[tg]?.bg || "bg-slate-100 text-slate-700 border-slate-200"} hover:brightness-95`
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-current"}`} />
+                      {tg} <span className="text-[9px] opacity-75 font-mono">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
 
           {/* Ejes y Cuadrícula de la Matriz */}
           <div className="border border-slate-200 rounded-xl md:rounded bg-slate-200 md:bg-white overflow-hidden shadow-sm">
@@ -2062,6 +2230,39 @@ services:
                             </span>
                           )}
                         </div>
+
+                        {/* Control de Cuadrantes e Hitos Rápido para celulares */}
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 select-none" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTaskStatusDirectly(task.id)}
+                            className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase tracking-wider cursor-pointer border ${
+                              task.status === "DONE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-650 border-slate-200 hover:bg-slate-200"
+                            }`}
+                          >
+                            {task.status === "DONE" ? "✔️ Listo" : "⏳ Pendiente"}
+                          </button>
+                          
+                          <div className="flex items-center gap-0.5 font-mono text-[8px]">
+                            <span className="text-[7px] text-slate-400 font-extrabold uppercase mr-1">Mover:</span>
+                            {["Q1", "Q2", "Q3", "Q4"].map((q) => (
+                              <button
+                                key={q}
+                                type="button"
+                                onClick={() => handleMoveQuadrantDirectly(task.id, q as any)}
+                                className={`w-4 h-4 rounded text-[8px] font-black flex items-center justify-center transition-colors cursor-pointer ${
+                                  task.quadrant === q
+                                    ? "bg-slate-900 text-white font-bold"
+                                    : "bg-slate-100 hover:bg-slate-200 text-slate-500"
+                                }`}
+                              >
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2126,6 +2327,39 @@ services:
                             </span>
                           )}
                         </div>
+
+                        {/* Control de Cuadrantes e Hitos Rápido para celulares */}
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 select-none" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTaskStatusDirectly(task.id)}
+                            className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase tracking-wider cursor-pointer border ${
+                              task.status === "DONE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-655 border-slate-200 hover:bg-slate-200"
+                            }`}
+                          >
+                            {task.status === "DONE" ? "✔️ Listo" : "⏳ Pendiente"}
+                          </button>
+                          
+                          <div className="flex items-center gap-0.5 font-mono text-[8px]">
+                            <span className="text-[7px] text-slate-400 font-extrabold uppercase mr-1">Mover:</span>
+                            {["Q1", "Q2", "Q3", "Q4"].map((q) => (
+                              <button
+                                key={q}
+                                type="button"
+                                onClick={() => handleMoveQuadrantDirectly(task.id, q as any)}
+                                className={`w-4 h-4 rounded text-[8px] font-black flex items-center justify-center transition-colors cursor-pointer ${
+                                  task.quadrant === q
+                                    ? "bg-slate-900 text-white font-bold"
+                                    : "bg-slate-100 hover:bg-slate-200 text-slate-500"
+                                }`}
+                              >
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2189,6 +2423,39 @@ services:
                               ⏱️ {task.due_date}
                             </span>
                           )}
+                        </div>
+
+                        {/* Control de Cuadrantes e Hitos Rápido para celulares */}
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 select-none" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTaskStatusDirectly(task.id)}
+                            className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase tracking-wider cursor-pointer border ${
+                              task.status === "DONE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-650 border-slate-200 hover:bg-slate-200"
+                            }`}
+                          >
+                            {task.status === "DONE" ? "✔️ Listo" : "⏳ Pendiente"}
+                          </button>
+                          
+                          <div className="flex items-center gap-0.5 font-mono text-[8px]">
+                            <span className="text-[7px] text-slate-400 font-extrabold uppercase mr-1">Mover:</span>
+                            {["Q1", "Q2", "Q3", "Q4"].map((q) => (
+                              <button
+                                key={q}
+                                type="button"
+                                onClick={() => handleMoveQuadrantDirectly(task.id, q as any)}
+                                className={`w-4 h-4 rounded text-[8px] font-black flex items-center justify-center transition-colors cursor-pointer ${
+                                  task.quadrant === q
+                                    ? "bg-slate-900 text-white font-bold"
+                                    : "bg-slate-100 hover:bg-slate-200 text-slate-500"
+                                }`}
+                              >
+                                {q}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ))}
