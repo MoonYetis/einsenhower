@@ -28,7 +28,15 @@ import {
   Send,
   Trash2,
   Lock,
-  Tag
+  Tag,
+  Award,
+  PieChart,
+  Briefcase,
+  Heart,
+  Smile,
+  Compass,
+  Printer,
+  TrendingUp
 } from "lucide-react";
 
 interface UserResponseSim {
@@ -256,6 +264,13 @@ export default function App() {
   // Estado para filtrado y categorización por etiquetas (tags)
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [newSelectedTags, setNewSelectedTags] = useState<string[]>([]);
+  
+  // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal
+  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook">("matrix");
+  const [weeklyCommentary, setWeeklyCommentary] = useState<string>(() => {
+    return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
+  });
+  const [showReportModal, setShowReportModal] = useState(false);
   
   React.useEffect(() => {
     setDeleteConfirmTaskId(null);
@@ -1150,8 +1165,47 @@ services:
             </div>
           </div>
 
-          {/* Barra de Filtros de Etiquetas */}
-          <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-4 rounded-lg shadow-xs">
+          {/* Selector de Navegación Multidimensional de Comando */}
+          <div className="flex bg-white p-1 rounded-xl border border-slate-200 gap-1 shadow-xs">
+            <button
+              onClick={() => setActiveView("matrix")}
+              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "matrix"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Matriz & Calendario
+            </button>
+            <button
+              onClick={() => setActiveView("analytics")}
+              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "analytics"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <PieChart className="w-3.5 h-3.5" />
+              Balance de Vida (Life-Work Analytics)
+            </button>
+            <button
+              onClick={() => setActiveView("logbook")}
+              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "logbook"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              Logros & Reporte Semanal
+            </button>
+          </div>
+
+          {activeView === "matrix" && (
+            <>
+              {/* Barra de Filtros de Etiquetas */}
+              <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-4 rounded-lg shadow-xs">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1">
               <Tag className="w-3.5 h-3.5 text-indigo-600" /> FILTRAR POR CATEGORÍA:
             </span>
@@ -1678,6 +1732,350 @@ services:
               </div>
             )}
           </div>
+        </>
+      )}
+
+          {/* ========================================================
+              VISTA DE BALANCE DE VIDA Y TRABAJO (LIFE-WORK ANALYTICS)
+              ======================================================== */}
+          {activeView === "analytics" && (
+            <div className="space-y-6">
+              {/* Tarjeta de Resumen Ejecutivo de Balance */}
+              <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-xs relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-5 text-indigo-100 pointer-events-none">
+                  <PieChart className="w-24 h-24 text-slate-100" />
+                </div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                      <TrendingUp className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 tracking-tight">
+                        Life-Work Balance Index (Índice de Distribución)
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Evaluación automatizada de distribución de carga mental en base a categorías de tareas activas.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cálculo matemático del balance */}
+                  {(() => {
+                    const workTags = ["Negocio", "Desarrollo", "Finanzas"];
+                    const lifeTags = ["Familiar", "Ocio", "Personal"];
+
+                    const workTasks = tasks.filter(t => t.tags?.some(tag => workTags.includes(tag)));
+                    const lifeTasks = tasks.filter(t => t.tags?.some(tag => lifeTags.includes(tag)));
+                    
+                    const workCount = workTasks.length;
+                    const lifeCount = lifeTasks.length;
+                    const totalTagged = workCount + lifeCount || 1;
+                    const workPct = Math.round((workCount / totalTagged) * 100);
+                    const lifePct = 100 - workPct;
+
+                    // Estado de Sobrecarga (Workload Saturation)
+                    // Cuenta las tareas de Q1 y Q2 no completadas
+                    const activeUrgentCount = tasks.filter(t => (t.quadrant === "Q1" || t.quadrant === "Q2") && t.status !== "DONE").length;
+                    
+                    let saturationLabel = "Óptimo (Bajo Desgaste)";
+                    let saturationColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                    let saturationBarColor = "bg-emerald-500";
+                    
+                    if (activeUrgentCount >= 3 && activeUrgentCount <= 5) {
+                      saturationLabel = "Moderado (Sostenible)";
+                      saturationColor = "bg-amber-50 text-amber-700 border-amber-200";
+                      saturationBarColor = "bg-amber-500";
+                    } else if (activeUrgentCount >= 6) {
+                      saturationLabel = "¡Alto Riesgo (Saturación detected)!";
+                      saturationColor = "bg-rose-50 text-rose-700 border-rose-200";
+                      saturationBarColor = "bg-rose-500";
+                    }
+
+                    // Mensaje de consejo inteligente / Coaching
+                    let coachingMsg = "¡Fabuloso! Tu balanza está perfectamente equilibrada entre metas laborales y momentos de desconexión familiar. Mantén este ritmo de vida.";
+                    if (workPct > 70) {
+                      coachingMsg = "Advertencia de asimetría: Estás dedicando más del 70% de tus esfuerzos a Negocio y Desarrollo. Te sugerimos programar una tarea en Q2 bajo la categoría 'Ocio' o 'Familiar' para recargar baterías.";
+                    } else if (lifePct > 70) {
+                      coachingMsg = "Aviso de alineación: Tienes un alto porcentaje de tareas de esparcimiento familiar u ocio personal. Excelente para tu bienestar, recuerda auditar tus plazos transaccionales en Negocio para evitar retrasos de entrega.";
+                    }
+
+                    return (
+                      <>
+                        {/* Indicadores Clave en Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block font-mono">Enfoque Profesional</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-slate-900">{workPct}%</span>
+                              <span className="text-[10px] font-mono text-indigo-600 font-bold">({workCount} tareas)</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 block leading-tight">Negocio / Desarrollo / Finanzas</span>
+                          </div>
+
+                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-1 font-sans">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block font-mono">Bienestar & Desconexión</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl font-black text-slate-900">{lifePct}%</span>
+                              <span className="text-[10px] font-mono text-emerald-600 font-bold">({lifeCount} tareas)</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 block leading-tight">Familiar / Personal / Ocio</span>
+                          </div>
+
+                          <div className={`p-4 border rounded-xl space-y-1 ${saturationColor}`}>
+                            <span className="text-[9px] font-black uppercase tracking-widest block font-mono opacity-85">Estado de Saturación</span>
+                            <div className="text-lg font-black tracking-tight">{saturationLabel}</div>
+                            <span className="text-[10px] block leading-tight opacity-90">{activeUrgentCount} tareas clave activas en Q1/Q2</span>
+                          </div>
+                        </div>
+
+                        {/* Barra de Distribución Visual Exquisita */}
+                        <div className="space-y-1.5 pt-2">
+                          <div className="flex justify-between text-[10px] font-mono font-black text-slate-400 tracking-wider">
+                            <span>TRABAJO ({workPct}%)</span>
+                            <span>VIDA Y FAMILIA ({lifePct}%)</span>
+                          </div>
+                          <div className="h-4.5 w-full bg-slate-100 rounded-full overflow-hidden flex border border-slate-200/50">
+                            <div className="bg-indigo-605 h-full transition-all duration-500 flex items-center justify-center text-[9px] font-black text-white" style={{ width: `${workPct}%`, backgroundColor: '#4f46e5' }}>
+                              {workPct >= 15 && "TRABAJO"}
+                            </div>
+                            <div className="bg-emerald-505 h-full transition-all duration-500 flex items-center justify-center text-[9px] font-black text-white" style={{ width: `${lifePct}%`, backgroundColor: '#10b981' }}>
+                              {lifePct >= 15 && "VIDA"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tarjeta de Coaching Mentor Activo */}
+                        <div className="bg-amber-50/50 border border-amber-200/60 p-4 rounded-lg flex items-start gap-3">
+                          <span className="p-1 bg-amber-100 text-amber-850 rounded-md text-xs mt-0.5">💡</span>
+                          <p className="text-xs text-amber-900 leading-relaxed font-sans font-medium">
+                            <strong className="font-extrabold block mb-0.5">Sugerencia Estratégica del Sistema:</strong>
+                            {coachingMsg}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Bento Grid: Distribución Exhaustiva por Categorías del Sistema */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Métrica de Desglose por Etiquetas */}
+                <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4">
+                  <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 font-mono">
+                    <PieChart className="w-4 h-4 text-slate-700" /> Presencia por Categoría Activa
+                  </h4>
+                  <div className="space-y-4 pt-1">
+                    {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].map(tg => {
+                      const tgTasks = tasks.filter(t => t.tags?.includes(tg));
+                      const totalCount = tgTasks.length;
+                      const doneCount = tgTasks.filter(t => t.status === "DONE").length;
+                      const globalTotal = tasks.length || 1;
+                      const presencePct = Math.round((totalCount / globalTotal) * 100);
+                      const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+
+                      return (
+                        <div key={tg} className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-extrabold flex items-center gap-1.5 text-slate-800">
+                              <span className={`w-2.5 h-2.5 rounded-full border ${colors.bg.split(" ")[1] || "bg-slate-400"}`} />
+                              {tg}
+                            </span>
+                            <span className="font-mono text-slate-500 font-bold text-[11px]">
+                              {doneCount} / {totalCount} completadas ({presencePct}% del total)
+                            </span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/40">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-350 ${
+                                tg === "Negocio" ? "bg-blue-600" :
+                                tg === "Familiar" ? "bg-emerald-500" :
+                                tg === "Ocio" ? "bg-fuchsia-500" :
+                                tg === "Desarrollo" ? "bg-violet-600" :
+                                tg === "Personal" ? "bg-rose-500" :
+                                "bg-amber-500"
+                              }`} 
+                              style={{ width: `${presencePct}%` }} 
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Diagnóstico de Salud de Cuadrantes (Eisenhower Diagnostics) */}
+                <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4">
+                  <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 font-mono">
+                    <Compass className="w-4 h-4 text-slate-700" /> Diagnóstico de Salud Eisenhower
+                  </h4>
+
+                  {(() => {
+                    const q1Count = tasks.filter(t => t.quadrant === "Q1" && t.status !== "DONE").length;
+                    const q2Count = tasks.filter(t => t.quadrant === "Q2" && t.status !== "DONE").length;
+                    const q3Count = tasks.filter(t => t.quadrant === "Q3" && t.status !== "DONE").length;
+                    const q4Count = tasks.filter(t => t.quadrant === "Q4" && t.status !== "DONE").length;
+
+                    return (
+                      <div className="space-y-3.5 pt-1">
+                        <div className="flex gap-3 items-center p-2.5 rounded-lg bg-red-50/40 border border-red-100">
+                          <span className="text-xs font-black font-mono text-red-600 bg-red-100/80 px-2 py-1 rounded min-w-[36px] text-center">Q1</span>
+                          <div className="flex-1 text-xs">
+                            <div className="font-bold text-red-900">Urgente y Crítico ({q1Count} activas)</div>
+                            <div className="text-red-750 text-[10px]">
+                              {q1Count > 3 ? "Atención: Demasiadas urgencias pendientes. Detén la entrada de nuevas tareas." : "Excelente manejo de incendios y crisis temporales."}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 items-center p-2.5 rounded-lg bg-indigo-50/40 border border-indigo-100">
+                          <span className="text-xs font-black font-mono text-indigo-600 bg-indigo-100/80 px-2 py-1 rounded min-w-[36px] text-center">Q2</span>
+                          <div className="flex-1 text-xs">
+                            <div className="font-bold text-indigo-900">Planificación Estratégica ({q2Count} activas)</div>
+                            <div className="text-indigo-750 text-[10px]">
+                              {q2Count === 0 ? "Alerta: No estás planificando a largo plazo. Programa metas en este cuadrante." : "Buen nivel de enfoque estratégico. Aquí yace la verdadera productividad."}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 items-center p-2.5 rounded-lg bg-amber-50/40 border border-amber-100">
+                          <span className="text-xs font-black font-mono text-amber-600 bg-amber-100/80 px-2 py-1 rounded min-w-[36px] text-center">Q3</span>
+                          <div className="flex-1 text-xs">
+                            <div className="font-bold text-amber-900">Cola de Delegación ({q3Count} activas)</div>
+                            <div className="text-amber-750 text-[10px]">
+                              {q3Count > 0 ? `Asignadas a colaboradores (${tasks.filter(t => t.quadrant === "Q3").map(t => t.assigned_to).filter((v, i, a) => a.indexOf(v) === i).join(", ")}). Revisa su entrega.` : "No hay tareas delegadas. Podrías delegar hilos mecánicos para liberar tu agenda."}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 items-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                          <span className="text-xs font-black font-mono text-slate-500 bg-slate-200/80 px-2 py-1 rounded min-w-[36px] text-center">Q4</span>
+                          <div className="flex-1 text-xs">
+                            <div className="font-bold text-slate-800">Distracciones o Pospuestas ({q4Count} activas)</div>
+                            <div className="text-slate-600 text-[10px]">
+                              {q4Count > 4 ? "Sugerencia: Demasiado ruido acumulado en Q4. Te recomendamos depurar o archivar estas tareas." : "Nivel saludable de ruido irrelevante bajo control."}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VISTA DE BITÁCORA DE LOGROS Y REPORTE SEMANAL
+              ======================================================== */}
+          {activeView === "logbook" && (
+            <div className="space-y-6">
+              {/* Resumen de Logros Semanales en Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                
+                {/* Lado Izquierdo de la Bitácora: Formulario de Notas de Cierre Semanal */}
+                <div className="md:col-span-5 bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-black uppercase text-indigo-700 tracking-wider flex items-center gap-1.5 font-mono">
+                      <Smile className="w-4 h-4 animate-pulse text-indigo-500" /> Reflexión del Cierre Semanal
+                    </h4>
+                    <p className="text-[11px] text-slate-500 leading-tight">
+                      Anota tus aprendizajes, agradecimientos o un balance personal de lo vivido esta semana. Se guardará localmente.
+                    </p>
+                  </div>
+
+                  <textarea
+                    value={weeklyCommentary}
+                    onChange={(e) => {
+                      setWeeklyCommentary(e.target.value);
+                      localStorage.setItem("weekly_commentary", e.target.value);
+                    }}
+                    placeholder="Redacta cómo te sentiste esta semana, qué obstáculo superaste y qué te gustaría mejorar para la siguiente..."
+                    className="w-full h-44 text-xs p-3 border border-slate-200 rounded-lg focus:border-slate-900 focus:outline-none bg-slate-50/50 resize-none leading-relaxed font-sans placeholder:text-slate-400"
+                  />
+
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-[10px] text-slate-600 font-mono flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                    <span>Guardado automático activado en local.</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(true)}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-950 text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Generar Reporte Semanal
+                  </button>
+                </div>
+
+                {/* Lado Derecho de la Bitácora: El Listado de Tareas Completadas (DONE) */}
+                <div className="md:col-span-7 bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-150">
+                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 font-mono">
+                      <Award className="w-4 h-4 text-amber-500 animate-bounce" /> Bitácora de Logros (Completados)
+                    </h4>
+                    <span className="text-[10px] font-mono font-black bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded uppercase">
+                      {tasks.filter(t => t.status === "DONE").length} Completadas con éxito
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 max-h-[352px] overflow-y-auto pr-1">
+                    {tasks.filter(t => t.status === "DONE").length === 0 ? (
+                      <div className="text-center py-10 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs font-sans">
+                        🏆 ¡Aún no tienes tareas marcadas como DONE esta semana!
+                        <p className="text-[10px] text-slate-400 mt-1 max-w-xs mx-auto">
+                          Mueve tus tareas del cuadrante Q1 o Q2 a Completadas en el panel lateral a medida que las finalices.
+                        </p>
+                      </div>
+                    ) : (
+                      tasks.filter(t => t.status === "DONE").map(task => (
+                        <div key={task.id} className="p-3 bg-slate-50/50 border border-slate-200/80 rounded-lg hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] font-mono font-black text-slate-400">
+                                {task.id}
+                              </span>
+                              <span className={`text-[9px] font-mono font-black px-1.5 rounded uppercase tracking-wider ${
+                                task.quadrant === "Q1" ? "bg-red-50 text-red-600 border border-red-100" :
+                                task.quadrant === "Q2" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
+                                task.quadrant === "Q3" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                                "bg-slate-100 text-slate-600 border border-slate-200"
+                              }`}>
+                                {task.quadrant}
+                              </span>
+                              <h5 className="text-[11px] font-extrabold text-slate-850 leading-snug line-through select-all decoration-slate-400">
+                                {task.title}
+                              </h5>
+                            </div>
+                            <span className="text-[10px] text-slate-500 block leading-tight truncate max-w-md">
+                              {task.description}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col sm:items-end shrink-0 gap-1">
+                            <span className="text-[10px] font-mono text-slate-600 font-bold">
+                              Colab: {task.assigned_to}
+                            </span>
+                            {task.tags && task.tags.length > 0 && (
+                              <div className="flex gap-1">
+                                {task.tags.map(tg => (
+                                  <span key={tg} className="text-[8px] font-black border border-slate-150 text-slate-400 px-1 py-0.2 rounded uppercase">
+                                    {tg}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 
           {/* Explorador de Código en Tiempo Real de Fase 2 (En Español) */}
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
@@ -2242,6 +2640,228 @@ services:
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DEL REPORTE DE BIENESTAR Y CIERRE SEMANAL (PRINTABLE) */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in">
+          <div className="bg-white border border-slate-300 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden font-sans my-8">
+            
+            {/* Cabecera del Documento de Reporte */}
+            <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center print:hidden">
+              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-indigo-400">
+                MatrixOS Executive Reporter
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-mono font-black uppercase tracking-wider rounded transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Imprimir / PDF
+                </button>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-mono font-black uppercase tracking-wider rounded transition-all cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+
+            {/* Cuerpo del Reporte Membretado */}
+            <div className="p-8 space-y-6 sm:p-10 print:p-0 bg-slate-50/20" id="matrixos-executive-report">
+              
+              {/* Encabezado Formal */}
+              <div className="border-b-2 border-slate-900 pb-5 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight font-mono">
+                      MatrixOS // Reporte de Cierre Semanal
+                    </h2>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Id del Sistema: 5d48d427-ca29-4c8f-8e04-f635d51d965c
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-widest bg-slate-100 text-slate-700 py-1 px-2 rounded border border-slate-200">
+                      Fase 2: Conexión Real
+                    </span>
+                    <p className="text-[10px] text-slate-400 font-mono mt-1">
+                      Generado: {new Date().toLocaleDateString("es-ES")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 text-[11px] font-mono">
+                  <div>
+                    <span className="text-slate-400 font-black block text-[9px] uppercase tracking-wider">Usuario Principal:</span>
+                    <span className="font-bold text-slate-800">{currentUser?.name || "Osman Marin"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-black block text-[9px] uppercase tracking-wider">Colaborador:</span>
+                    <span className="font-bold text-slate-800">Marie Puscan</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-black block text-[9px] uppercase tracking-wider">Motor Transaccional:</span>
+                    <span className="font-bold text-slate-800">PostgreSQL 16 Async</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-black block text-[9px] uppercase tracking-wider">Status General:</span>
+                    <span className="font-bold text-slate-800 font-mono">Sincronizado</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1. Métrica Combinada de Balance */}
+              <div className="space-y-3">
+                <h3 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                  <PieChart className="w-4 h-4 text-indigo-600" /> 1. Análisis de Balance de Vida y Trabajo
+                </h3>
+                {(() => {
+                  const workTags = ["Negocio", "Desarrollo", "Finanzas"];
+                  const lifeTags = ["Familiar", "Ocio", "Personal"];
+
+                  const workTasks = tasks.filter(t => t.tags?.some(tag => workTags.includes(tag)));
+                  const lifeTasks = tasks.filter(t => t.tags?.some(tag => lifeTags.includes(tag)));
+                  
+                  const workCount = workTasks.length;
+                  const lifeCount = lifeTasks.length;
+                  const totalTagged = workCount + lifeCount || 1;
+                  const workPct = Math.round((workCount / totalTagged) * 100);
+                  const lifePct = 100 - workPct;
+
+                  const doneTasks = tasks.filter(t => t.status === "DONE");
+                  const activeTasks = tasks.filter(t => t.status !== "DONE");
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[11px] font-mono text-slate-600">
+                          <span>Esfuerzo Laboral: {workPct}%</span>
+                          <span>Vida y Relajación: {lifePct}%</span>
+                        </div>
+                        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                          <div className="bg-indigo-600 h-full" style={{ width: `${workPct}%` }}></div>
+                          <div className="bg-emerald-500 h-full" style={{ width: `${lifePct}%` }}></div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-snug font-sans">
+                          Un balance de 50%-75% de trabajo es óptimo para mantener de manera sostenible las operaciones de negocio sin descuidar tu salud e integridad familiar de largo plazo.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-[11px] font-mono bg-slate-50 p-3 rounded-lg border border-slate-150">
+                        <div>
+                          <span className="text-slate-400 block text-[9px] uppercase font-black">LOGROS ACUMULADOS:</span>
+                          <span className="text-xs font-black text-emerald-600 block sm:text-sm">
+                            {doneTasks.length} Tareas finalizadas
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[9px] uppercase font-black">PENDIENTES RESTANTES:</span>
+                          <span className="text-xs font-black text-slate-600 block sm:text-sm">
+                            {activeTasks.length} Tareas en cola
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 2. Bitácora de Logros (Tareas DONE) */}
+              <div className="space-y-3">
+                <h3 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                  <Award className="w-4 h-4 text-slate-700" /> 2. Bitácora de Logros Semanales (Status: DONE)
+                </h3>
+                
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {tasks.filter(t => t.status === "DONE").length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-xs font-mono border border-dashed border-slate-200 rounded-lg">
+                      No se registraron tareas como completadas (DONE) en este periodo.
+                    </div>
+                  ) : (
+                    tasks.filter(t => t.status === "DONE").map(task => (
+                      <div key={task.id} className="p-3 bg-white border border-slate-200 rounded-lg flex items-start justify-between gap-3 text-left">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono font-bold text-slate-400">{task.id}</span>
+                            <span className="text-[9px] font-mono bg-slate-100 text-slate-600 border border-slate-200 px-1 py-0.2 rounded font-bold uppercase">{task.quadrant}</span>
+                            <h4 className="text-[11px] font-black text-slate-800 leading-tight">
+                              {task.title}
+                            </h4>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-1 pl-1 leading-tight">{task.description}</p>
+                        </div>
+                        <div className="text-right text-[10px] font-mono shrink-0">
+                          <span className="text-slate-450 font-bold block">Colab: {task.assigned_to}</span>
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex gap-1 justify-end mt-1">
+                              {task.tags.map(tg => (
+                                <span key={tg} className="text-[8px] font-bold border border-slate-150 text-slate-400 px-1 py-0.2 rounded uppercase">
+                                  {tg}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Reflexión del Operador */}
+              <div className="space-y-3 pt-1">
+                <h3 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                  <Smile className="w-4 h-4 text-indigo-600" /> 3. Reflexiones de Desempeño y Bienestar
+                </h3>
+                <div className="p-4 bg-indigo-50/20 border border-indigo-100 rounded-lg whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-slate-850 font-sans italic">
+                    "{weeklyCommentary || "No se especificaron reflexiones esta semana."}"
+                  </p>
+                </div>
+              </div>
+
+              {/* Sección de Firmas formal */}
+              <div className="grid grid-cols-2 gap-8 pt-8 border-t border-slate-200 font-mono text-[10px]">
+                <div className="text-center space-y-1">
+                  <div className="border-b border-slate-400 mx-auto w-36 h-10 flex items-end justify-center select-none text-[11px] italic font-sans text-indigo-600 pb-1 font-bold">
+                    {currentUser?.name || "Osman Marin"}
+                  </div>
+                  <span className="block text-[8px] text-slate-400 uppercase tracking-widest">Director Ejecutivo</span>
+                  <span className="text-slate-500 block">MatrixOS Operator</span>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="border-b border-slate-400 mx-auto w-36 h-10 flex items-end justify-center select-none text-[11px] italic font-sans text-indigo-600 pb-1 font-bold">
+                    Marie Puscan
+                  </div>
+                  <span className="block text-[8px] text-slate-400 uppercase tracking-widest">Colaborador Líder</span>
+                  <span className="text-slate-500 block">MatrixOS Team-Member</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Acciones de pie para impresión */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="px-4 py-2 border border-slate-250 text-slate-600 rounded text-xs font-mono font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Cerrar Reporte
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-mono font-bold uppercase transition-all shadow-sm cursor-pointer"
+              >
+                Imprimir Documento
+              </button>
+            </div>
+
           </div>
         </div>
       )}
