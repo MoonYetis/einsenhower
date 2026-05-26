@@ -271,10 +271,177 @@ export default function App() {
     return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
   });
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // 1. Temporizador de Pomodoro e Incremento de Enfoque Sincronizado
+  const [pomodoroTaskId, setPomodoroTaskId] = useState<string | null>(null);
+  const [pomodoroTimeLeft, setPomodoroTimeLeft] = useState(1500); // 25 Minutos
+  const [pomodoroIsRunning, setPomodoroIsRunning] = useState(false);
+  const [pomodoroMode, setPomodoroMode] = useState<"focus" | "break">("focus");
+
+  // 2. OKRs / Metas Semanales Estratégicas
+  const [weeklyGoals, setWeeklyGoals] = useState<{ id: string; title: string; category: "Trabajo" | "Vida" }[]>(() => {
+    const saved = localStorage.getItem("weekly_goals");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { id: "goal-1", title: "Cerrar backend asíncrono PostgreSQL & Alembic", category: "Trabajo" },
+      { id: "goal-2", title: "Planificar picnic y viaje de fin de semana con la familia", category: "Vida" },
+      { id: "goal-3", title: "Mejorar distribución de carga mental delegando Q3", category: "Trabajo" }
+    ];
+  });
+  const [newGoalTitle, setNewGoalTitle] = useState("");
+  const [newGoalCategory, setNewGoalCategory] = useState<"Trabajo" | "Vida">("Trabajo");
+
+  // 3. Simulación sismográfica de sobrecarga / Burnout Meter
+  const [burnoutSimulationOffset, setBurnoutSimulationOffset] = useState(0); // Para delegar tareas simuladas
+
   
   React.useEffect(() => {
     setDeleteConfirmTaskId(null);
   }, [selectedTaskId]);
+
+  // 1. Temporizador de Pomodoro e Incremento de Enfoque Sincronizado
+  React.useEffect(() => {
+    let interval: any = null;
+    if (pomodoroIsRunning && pomodoroTimeLeft > 0) {
+      interval = setInterval(() => {
+        setPomodoroTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (pomodoroIsRunning && pomodoroTimeLeft === 0) {
+      // Pitido & Alerta de voz sintética
+      try {
+        const synth = window.speechSynthesis;
+        if (synth) {
+          const utterance = new SpeechSynthesisUtterance(
+            pomodoroMode === "focus" 
+              ? "Enfoque finalizado. Excelente trabajo realizándolo." 
+              : "Descanso completado. Regresemos al tablero."
+          );
+          synth.speak(utterance);
+        }
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (context) {
+          const osc = context.createOscillator();
+          const gain = context.createGain();
+          osc.connect(gain);
+          gain.connect(context.destination);
+          osc.frequency.setValueAtTime(880, context.currentTime);
+          gain.gain.setValueAtTime(0.2, context.currentTime);
+          osc.start();
+          osc.stop(context.currentTime + 0.35);
+        }
+      } catch (e) {
+        console.warn("Restricciones de sonido del navegador:", e);
+      }
+
+      if (pomodoroMode === "focus") {
+        setPomodoroMode("break");
+        setPomodoroTimeLeft(300); // 5 Minutos de descanso
+        if (pomodoroTaskId) {
+          handleAutoLogPomodoroNote(
+            pomodoroTaskId,
+            "🍅 [Pomodoro Completado] Osman Marin completó con éxito un ciclo de enfoque óptimo de 25 minutos sobre esta meta transaccional."
+          );
+        }
+      } else {
+        setPomodoroMode("focus");
+        setPomodoroTimeLeft(1500); // 25 Minutos
+        setPomodoroIsRunning(false); // Pausar para que el usuario reinicie el enfoque
+      }
+    }
+    return () => clearInterval(interval);
+  }, [pomodoroIsRunning, pomodoroTimeLeft, pomodoroMode, pomodoroTaskId]);
+
+  const handleAutoLogPomodoroNote = async (taskId: string, content: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          user: currentUser?.name || "Osman Marin"
+        })
+      });
+      if (res.ok) {
+        const createdNoteObj = await res.json();
+        setTasks(prev => prev.map(t => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              notes: [...t.notes, createdNoteObj]
+            };
+          }
+          return t;
+        }));
+      }
+    } catch (err) {
+      console.warn("Error enviando nota de pomodoro, usando local:", err);
+      const newNoteObj = {
+        id: Date.now(),
+        user: currentUser?.name || "Osman Marin",
+        userEmail: currentUser?.email || "osman.marin@matrixos.io",
+        content,
+        created_at: "Hace un momento"
+      };
+      setTasks(prev => prev.map(t => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            notes: [...t.notes, newNoteObj]
+          };
+        }
+        return t;
+      }));
+    }
+  };
+
+  // 2. OKRs / Metas Semanales Estratégicas
+  const [taskGoalsMap, setTaskGoalsMap] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem("task_goals_map");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const handleLinkTaskToGoal = (taskId: string, goalId: string | null) => {
+    const newMap = { ...taskGoalsMap };
+    if (goalId) {
+      newMap[taskId] = goalId;
+    } else {
+      delete newMap[taskId];
+    }
+    setTaskGoalsMap(newMap);
+    localStorage.setItem("task_goals_map", JSON.stringify(newMap));
+  };
+
+  const handleAddWeeklyGoal = (title: string, category: "Trabajo" | "Vida") => {
+    if (!title.trim()) return;
+    const newGoal = {
+      id: "goal-" + Date.now(),
+      title: title.trim(),
+      category
+    };
+    const updated = [...weeklyGoals, newGoal];
+    setWeeklyGoals(updated);
+    localStorage.setItem("weekly_goals", JSON.stringify(updated));
+    setNewGoalTitle("");
+  };
+
+  const handleRemoveWeeklyGoal = (goalId: string) => {
+    const updated = weeklyGoals.filter(g => g.id !== goalId);
+    setWeeklyGoals(updated);
+    localStorage.setItem("weekly_goals", JSON.stringify(updated));
+    
+    // Desvincular todas las tareas que tengan este goalId
+    const newMap = { ...taskGoalsMap };
+    Object.keys(newMap).forEach(k => {
+      if (newMap[k] === goalId) {
+        delete newMap[k];
+      }
+    });
+    setTaskGoalsMap(newMap);
+    localStorage.setItem("task_goals_map", JSON.stringify(newMap));
+  };
+
 
   // Selector de filtro de etiquetas cruzado
   const filteredTasks = selectedTagFilter
@@ -1859,6 +2026,263 @@ services:
                 </div>
               </div>
 
+              {/* NOVEDAD 3: SISMÓGRAFO DE SOBRECARGA & DETECTOR DE QUEMARSE (BURNOUT METER) */}
+              <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 bg-rose-50 text-rose-605 rounded-lg" style={{ color: '#e11d48' }}>
+                      <Activity className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 tracking-tight font-sans">
+                        Sismógrafo de Sobrecarga Mental & Medidor de Riesgo de Desgaste (Burnout Gauge)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-sans">
+                        Analizador ponderado de compromisos activos Vs. tu límite de saturación cognitiva.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="p-1 px-2.5 bg-indigo-50 border border-indigo-120 rounded font-mono text-[9px] font-black text-indigo-700 uppercase tracking-widest animate-pulse">
+                    Mapeo Predictivo
+                  </span>
+                </div>
+
+                {(() => {
+                  // Calcular tareas de verdad (Q1 y Q2 no completadas)
+                  const realQ1Count = tasks.filter(t => t.quadrant === "Q1" && t.status !== "DONE").length;
+                  const realQ2Count = tasks.filter(t => t.quadrant === "Q2" && t.status !== "DONE").length;
+                  const otherActiveCount = tasks.filter(t => (t.quadrant === "Q3" || t.quadrant === "Q4") && t.status !== "DONE").length;
+
+                  // Aplicamos el simulador de delegación: cada punto amortigua presión mental
+                  const adjustedQ1Value = Math.max(0, realQ1Count - burnoutSimulationOffset);
+                  
+                  // Score ponderado de 0 a 100
+                  const rawScore = (adjustedQ1Value * 22) + (realQ2Count * 13) + (otherActiveCount * 5);
+                  const score = Math.max(5, Math.min(100, Math.round(rawScore)));
+
+                  // Rangos de peligro
+                  let meterLabel = "ESTADO SALUDABLE: Mente despejada y ritmo sostenible";
+                  let meterColor = "text-emerald-600";
+                  let meterBadgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-100";
+                  let recommendationText = "Estás operando en tu zona óptima de control. Tienes suficiente ancho de banda cognitivo para incorporar un nuevo sprint de alta complejidad técnica o planificar ocio.";
+
+                  if (score >= 35 && score < 70) {
+                    meterLabel = "PRESIÓN MODERADA: Capacidad al límite de alerta";
+                    meterColor = "text-amber-500";
+                    meterBadgeStyle = "bg-amber-50 text-amber-700 border-amber-100";
+                    recommendationText = "Atención: La carga de trabajo está copando tu almacenamiento de atención. Considera usar el slider inferior para simular la asignación/delegación de tareas operativas (Q3) a Marie Puscan.";
+                  } else if (score >= 70) {
+                    meterLabel = "RIESGO CRÍTICO DE BURN-OUT: Fatiga cognitiva inminente";
+                    meterColor = "text-rose-600";
+                    meterBadgeStyle = "bg-rose-50 text-rose-700 border-rose-100";
+                    recommendationText = "¡AUXILIO SISMOGRÁFICO! Demasiadas directrices urgentes abiertas de manera simultánea. Recomendamos detener lanzamientos en caliente y delegar al menos 2 tareas críticas inmediatamente.";
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                      {/* Medidor visual */}
+                      <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 text-center border border-slate-100 bg-slate-50/50 rounded-xl">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-mono mb-4">
+                          Indicador de Esfuerzo Activo
+                        </span>
+                        
+                        <div className="relative w-40 h-24 overflow-hidden flex flex-col justify-end">
+                          {/* Semicírculo de fondo */}
+                          <div className="absolute top-0 left-0 w-40 h-40 rounded-full border-12 border-slate-200" />
+                          {/* Aguja central */}
+                          <div 
+                            className="absolute bottom-0 left-1/2 w-1.5 h-16 origin-bottom rounded-t-full transition-transform duration-700 shadow-sm"
+                            style={{ 
+                              transform: `translate(-50%, 0) rotate(${-90 + ((score / 100) * 180)}deg)`,
+                              backgroundColor: '#1e293b'
+                            }}
+                          />
+                          {/* Núcleo de la aguja */}
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-900 rounded-full border-2 border-white shadow-sm" />
+                        </div>
+
+                        <div className="mt-4 space-y-1">
+                          <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-3xl font-black text-slate-900 tracking-tight font-sans">
+                              {score}%
+                            </span>
+                            <span className="text-xs text-slate-400 font-mono">Fatiga</span>
+                          </div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block font-sans ${meterColor}`}>
+                            {meterLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Simulador y Controles interactivos */}
+                      <div className="lg:col-span-7 space-y-4">
+                        <div className={`p-4 border rounded-xl leading-relaxed text-xs font-sans ${meterBadgeStyle}`}>
+                          <strong className="block font-black mb-1 flex items-center gap-1">
+                            ⚠️ Presión de Urgencias Activas:
+                          </strong>
+                          {recommendationText}
+                        </div>
+
+                        {/* Controles de Simulación */}
+                        <div className="p-4 bg-slate-100 border border-slate-200 rounded-lg space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-extrabold text-slate-800 font-sans">
+                              Simulador: Delegar Tareas Q1 a Marie Puscan
+                            </span>
+                            <span className="font-mono bg-indigo-600 text-white font-bold p-1 px-2 rounded text-[10px]">
+                              -{burnoutSimulationOffset * 20}% Presión
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-400 font-mono">0</span>
+                            <input
+                              type="range"
+                              min="0"
+                              max={Math.max(2, realQ1Count)}
+                              value={burnoutSimulationOffset}
+                              onChange={(e) => setBurnoutSimulationOffset(parseInt(e.target.value))}
+                              className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                            />
+                            <span className="text-xs text-slate-400 font-mono">{Math.max(2, realQ1Count)}</span>
+                          </div>
+
+                          <p className="text-[10px] text-slate-500 leading-tight">
+                            Regulador dinámico. Simular cómo mitigaría Marie Puscan tu sobrecarga absorbiendo tareas inmediatas. {burnoutSimulationOffset > 0 && `(Simulando delegar ${burnoutSimulationOffset} tareas)`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* DASHBOARD DE METAS SEMANALES (OKRs ESTRUCTURADOS) */}
+              <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-xs space-y-5 font-sans">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-1.5 font-sans">
+                      <Award className="w-5 h-5 text-indigo-600" /> Tablero de Metas Estratégicas y OKRs Semanales
+                    </h4>
+                    <p className="text-[10px] text-slate-500 font-sans">
+                      Alineación transversal de tus tareas operacionales con metas de alto nivel (foco Profesional vs Vida).
+                    </p>
+                  </div>
+                  
+                  {/* Formulario rápido para agregar metas */}
+                  <div className="flex items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-lg h-9">
+                    <input
+                      type="text"
+                      placeholder="Nueva meta semanal..."
+                      value={newGoalTitle}
+                      onChange={(e) => setNewGoalTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddWeeklyGoal(newGoalTitle, newGoalCategory);
+                        }
+                      }}
+                      className="text-xs px-2 bg-transparent border-none rounded focus:outline-none min-w-[150px] font-sans"
+                    />
+                    <select
+                      value={newGoalCategory}
+                      onChange={(e) => setNewGoalCategory(e.target.value as "Trabajo" | "Vida")}
+                      className="text-[10px] bg-white border border-slate-200 rounded px-1.5 focus:outline-none font-sans cursor-pointer h-full"
+                    >
+                      <option value="Trabajo">🏢 Work</option>
+                      <option value="Vida">🌿 Life</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleAddWeeklyGoal(newGoalTitle, newGoalCategory)}
+                      className="bg-indigo-600 border border-indigo-700 hover:bg-indigo-505 text-white rounded text-xs px-2.5 h-full font-black uppercase transition-colors cursor-pointer"
+                      style={{ backgroundColor: '#4f46e5' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {weeklyGoals.length === 0 ? (
+                  <div className="p-6 text-center border-2 border-dashed border-slate-200 text-slate-400 text-xs rounded-xl font-sans">
+                    No has definido ninguna meta estratégica semanal. Crea una arriba para alinear tus tareas.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {weeklyGoals.map(goal => {
+                      const linkedTasks = tasks.filter(t => taskGoalsMap[t.id] === goal.id);
+                      const totalLinked = linkedTasks.length;
+                      const doneLinked = linkedTasks.filter(t => t.status === "DONE").length;
+                      const completionRate = totalLinked > 0 ? Math.round((doneLinked / totalLinked) * 100) : 0;
+
+                      return (
+                        <div key={goal.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative shadow-xxs font-sans flex flex-col justify-between hover:border-slate-350 transition-colors">
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-wider ${goal.category === "Trabajo" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"} border`}>
+                                {goal.category === "Trabajo" ? "🏢 Profesional" : "🌿 Vida & Desconexión"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveWeeklyGoal(goal.id)}
+                                className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                title="Eliminar Objetivo"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            
+                            <div>
+                              <h5 className="font-extrabold text-slate-800 text-xs tracking-tight leading-snug">
+                                {goal.title}
+                              </h5>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 space-y-2">
+                            {/* Barra de progreso de objetivos */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] text-slate-450 font-mono font-bold">
+                                <span>PROGRESO ALINEADO</span>
+                                <span>{completionRate}% ({doneLinked}/{totalLinked} completado)</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500`} 
+                                  style={{ 
+                                    width: `${completionRate}%`,
+                                    backgroundColor: goal.category === "Trabajo" ? "#4f46e5" : "#10b981"
+                                  }} 
+                                />
+                              </div>
+                            </div>
+
+                            {/* Detalle de tareas vinculadas */}
+                            {totalLinked > 0 ? (
+                              <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                {linkedTasks.map(t => (
+                                  <div key={t.id} className="flex items-center justify-between text-[10px] p-1.5 bg-white border border-slate-150 rounded-md">
+                                    <span className={`truncate w-[65%] font-semibold ${t.status === "DONE" ? "line-through text-slate-400 font-normal" : "text-slate-700"}`}>
+                                      {t.title}
+                                    </span>
+                                    <span className={`text-[8px] p-0.5 px-1.5 font-mono rounded font-black ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : t.status === 'IN_PROGRESS' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'}`}>
+                                      {t.status}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-slate-400 italic">
+                                Sin tareas actualmente vinculadas: abre un elemento en la matriz y asígnale esta meta.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Bento Grid: Distribución Exhaustiva por Categorías del Sistema */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 1. Métrica de Desglose por Etiquetas */}
@@ -2361,6 +2785,103 @@ services:
                   placeholder="Ej: Inmediata, Hoy, 29 de Mayo"
                   className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:border-slate-900 focus:outline-none bg-white font-sans cursor-text"
                 />
+              </div>
+            </div>
+
+            {/* NOVEDAD 1 & 2: CONTROLADOR DE POMODORO Y ENLACE DE METAS SEMANALES */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4 shadow-xxs">
+              <div className="space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">
+                  1. Enfoque Pomodoro (Micro-Sprints)
+                </span>
+                <p className="text-[10px] text-slate-500 leading-tight font-sans">
+                  Inicia un sprint ininterrumpido de 25 minutos para esta tarea de la matriz. Al terminar, se guardará en la bitácora automáticamente y sonará un timbre.
+                </p>
+              </div>
+
+              {/* Temporizador UI */}
+              <div className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-lg relative overflow-hidden font-sans">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 font-sans">
+                    <span className={`w-2 h-2 rounded-full ${pomodoroIsRunning ? (pomodoroMode === 'focus' ? 'bg-indigo-600 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-300'}`} />
+                    <span className="text-2xl font-mono font-black text-slate-800 tracking-tight">
+                      {String(Math.floor(pomodoroTimeLeft / 60)).padStart(2, "0")}:{String(pomodoroTimeLeft % 60).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono font-black uppercase tracking-wider text-slate-400 block font-sans">
+                    {pomodoroMode === "focus" ? "🔥 Modo Enfoque" : "☕ Descanso Activo"}
+                  </span>
+                </div>
+
+                <div className="flex gap-1 select-none font-sans">
+                  {!pomodoroIsRunning ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPomodoroTaskId(currentTask.id);
+                        setPomodoroIsRunning(true);
+                      }}
+                      className="px-2.5 py-1 bg-indigo-600 border border-indigo-700 hover:bg-indigo-500 text-white rounded text-[10px] font-black uppercase tracking-wide transition-colors cursor-pointer"
+                    >
+                      Iniciar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPomodoroIsRunning(false)}
+                      className="px-2.5 py-1 bg-amber-500 border border-amber-600 hover:bg-amber-450 text-white rounded text-[10px] font-black uppercase tracking-wide transition-colors cursor-pointer"
+                    >
+                      Pausar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPomodoroIsRunning(false);
+                      setPomodoroTimeLeft(pomodoroMode === "focus" ? 1500 : 300);
+                    }}
+                    className="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded text-[10px] font-bold hover:bg-slate-100 transition-colors cursor-pointer font-mono"
+                    title="Reiniciar"
+                  >
+                    ↺
+                  </button>
+                </div>
+              </div>
+
+              {/* Mensaje de otro Pomodoro activo context */}
+              {pomodoroTaskId && pomodoroTaskId !== currentTask.id && (
+                <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[9px] text-amber-800 font-mono leading-tight">
+                  ⚠️ Hay un Pomodoro activo ejecutándose en la tarea <strong>{pomodoroTaskId}</strong>. Al iniciar aquí, reenfocarás tus esfuerzos a la tarea actual.
+                </div>
+              )}
+
+              {/* Vinculación a Meta Semanal */}
+              <div className="border-t border-slate-200/60 pt-3 space-y-1.5 font-sans">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">
+                  2. Alineación con OKR Semanal
+                </span>
+                
+                <div className="space-y-1">
+                  <select
+                    value={taskGoalsMap[currentTask.id] || ""}
+                    onChange={(e) => handleLinkTaskToGoal(currentTask.id, e.target.value || null)}
+                    className="w-full text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 cursor-pointer font-sans"
+                  >
+                    <option value="">-- No alineada (Sin meta) --</option>
+                    {weeklyGoals.map(goal => (
+                      <option key={goal.id} value={goal.id}>
+                        [{goal.category}] {goal.title}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {taskGoalsMap[currentTask.id] && (
+                    <div className="flex items-center gap-1.5 p-1.5 px-2 bg-indigo-50 border border-indigo-100/65 rounded text-[10px] text-indigo-700 font-medium font-sans leading-tight">
+                      <span>🎯</span>
+                      <span className="truncate">Alineado al OKR: <strong>{weeklyGoals.find(g => g.id === taskGoalsMap[currentTask.id])?.title}</strong></span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
