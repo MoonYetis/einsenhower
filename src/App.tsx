@@ -75,6 +75,8 @@ interface TaskSim {
 export default function App() {
   const [copied, setCopied] = useState<string | null>(null);
   const [activeCodeTab, setActiveCodeTab] = useState<"database" | "main" | "models" | "schemas" | "docker">("main");
+  // Estado para contraer o expandir la sección de Código Fuente de Fase 2
+  const [isCodeSectionExpanded, setIsCodeSectionExpanded] = useState(false);
   
   // Lista de usuarios legítimos del equipo asignada a la matriz de Eisenhower
   const mockTeamUsers = [
@@ -1090,92 +1092,126 @@ services:
 
           {/* Explorador de Código en Tiempo Real de Fase 2 (En Español) */}
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-            <div className="p-5 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
+            <div 
+              onClick={() => setIsCodeSectionExpanded(!isCodeSectionExpanded)}
+              className="p-5 bg-slate-50 flex items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-100/70 transition-colors"
+            >
+              <div className="flex-1">
                 <h3 className="font-mono text-sm font-black text-slate-900 flex items-center gap-2">
                   <FileCode className="w-4 h-4 text-indigo-600" /> CÓDIGO FUENTE DE FASE 2 (INTEGRACIÓN)
+                  <span className={`text-[9px] font-sans font-black px-2 py-0.5 rounded uppercase tracking-wider transition-all duration-200 ${
+                    isCodeSectionExpanded ? "bg-slate-200 text-slate-700" : "bg-indigo-50 text-indigo-700"
+                  }`}>
+                    {isCodeSectionExpanded ? "Contraer" : "Hacer click para expandir"}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Explora la lógica de la base de datos PostgreSQL, la API asíncrona FastAPI y los modelos SQLAlchemy.
                 </p>
               </div>
-
-              {/* Botonera de pestañas de código */}
-              <div className="flex border border-slate-200 rounded overflow-hidden text-[11px] font-mono bg-white shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("database")}
-                  className={`px-3 py-2 transition-colors cursor-pointer ${
-                    activeCodeTab === "database" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  database.py
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("main")}
-                  className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
-                    activeCodeTab === "main" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  main.py
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("models")}
-                  className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
-                    activeCodeTab === "models" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  models.py
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("schemas")}
-                  className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
-                    activeCodeTab === "schemas" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  schemas.py
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("docker")}
-                  className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
-                    activeCodeTab === "docker" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  compose.yml
-                </button>
+              <div className="shrink-0 text-slate-400">
+                <ChevronRight className={`w-5 h-5 transform transition-transform duration-200 ${isCodeSectionExpanded ? "rotate-90 text-slate-800" : "rotate-0"}`} />
               </div>
             </div>
 
-            <div className="p-5 font-mono text-[11px] leading-relaxed bg-slate-950 text-slate-350 relative">
-              <button 
-                onClick={() => {
-                  const contentMap = {
-                    database: databasePyContent,
-                    main: mainPyContent,
-                    models: modelsPyContent,
-                    schemas: schemasPyContent,
-                    docker: dockerComposeContent
-                  };
-                  handleCopy(contentMap[activeCodeTab], activeCodeTab);
-                }}
-                className="absolute top-4 right-4 p-1 px-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded text-[10px] font-mono flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                {copied === activeCodeTab ? <Check className="w-3.5 h-3.5 text-teal-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied === activeCodeTab ? "¡Copiado!" : "Copiar Código"}
-              </button>
+            {isCodeSectionExpanded && (
+              <div className="border-t border-slate-200">
+                {/* Botonera de pestañas de código */}
+                <div className="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase font-bold">Ficheros de Arquitectura Backend:</span>
+                  <div className="flex border border-slate-200 rounded overflow-hidden text-[11px] font-mono bg-white shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCodeTab("database");
+                      }}
+                      className={`px-3 py-2 transition-colors cursor-pointer ${
+                        activeCodeTab === "database" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      database.py
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCodeTab("main");
+                      }}
+                      className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
+                        activeCodeTab === "main" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      main.py
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCodeTab("models");
+                      }}
+                      className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
+                        activeCodeTab === "models" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      models.py
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCodeTab("schemas");
+                      }}
+                      className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
+                        activeCodeTab === "schemas" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      schemas.py
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCodeTab("docker");
+                      }}
+                      className={`px-3 py-2 border-l border-slate-200 transition-colors cursor-pointer ${
+                        activeCodeTab === "docker" ? "bg-slate-900 text-white font-bold" : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      compose.yml
+                    </button>
+                  </div>
+                </div>
 
-              <pre className="overflow-x-auto select-all max-h-80 pr-2">
-                {activeCodeTab === "database" && databasePyContent}
-                {activeCodeTab === "main" && mainPyContent}
-                {activeCodeTab === "models" && modelsPyContent}
-                {activeCodeTab === "schemas" && schemasPyContent}
-                {activeCodeTab === "docker" && dockerComposeContent}
-              </pre>
-            </div>
+                <div className="p-5 font-mono text-[11px] leading-relaxed bg-slate-950 text-slate-350 relative">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const contentMap = {
+                        database: databasePyContent,
+                        main: mainPyContent,
+                        models: modelsPyContent,
+                        schemas: schemasPyContent,
+                        docker: dockerComposeContent
+                      };
+                      handleCopy(contentMap[activeCodeTab], activeCodeTab);
+                    }}
+                    className="absolute top-4 right-4 p-1 px-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded text-[10px] font-mono flex items-center gap-1.5 transition-all cursor-pointer z-10"
+                  >
+                    {copied === activeCodeTab ? <Check className="w-3.5 h-3.5 text-teal-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied === activeCodeTab ? "¡Copiado!" : "Copiar Código"}
+                  </button>
+
+                  <pre className="overflow-x-auto select-all max-h-80 pr-2">
+                    {activeCodeTab === "database" && databasePyContent}
+                    {activeCodeTab === "main" && mainPyContent}
+                    {activeCodeTab === "models" && modelsPyContent}
+                    {activeCodeTab === "schemas" && schemasPyContent}
+                    {activeCodeTab === "docker" && dockerComposeContent}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
 
         </section>
@@ -1183,136 +1219,136 @@ services:
         {/* Lado Derecho: Panel de Detalles de la Tarea / Hilos de Notas / Trazabilidad en Español */}
         <aside className="w-96 border-l border-slate-200 bg-white flex flex-col justify-between flex-shrink-0 z-10 shadow-sm">
           
-          <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex-none">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
-                <Info className="w-4 h-4 text-slate-450" /> Detalle de Tarea Seleccionada
-              </span>
-              <button
-                onClick={() => handleDeleteTaskSim(currentTask.id)}
-                className="p-1 text-slate-400 hover:text-red-500 rounded hover:bg-red-50 transition-all cursor-pointer"
-                title="Eliminar Tarea"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Datos de Tarea Activa */}
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[9px] font-mono font-bold bg-slate-900 text-white px-2 py-0.5 rounded">
-                    {currentTask.id}
-                  </span>
-                  <span className={`text-[9px] font-mono font-black px-2 py-0.5 rounded border ${
-                    currentTask.quadrant === "Q1" ? "bg-red-50 text-red-700 border-red-200" :
-                    currentTask.quadrant === "Q2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                    currentTask.quadrant === "Q3" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                    "bg-slate-150 text-slate-700 border-slate-250"
-                  }`}>
-                    Cuadrante {currentTask.quadrant}
-                  </span>
-                </div>
-                
-                <h3 className="text-sm font-black text-slate-900 leading-snug">
-                  {currentTask.title}
-                </h3>
-                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  {currentTask.description}
-                </p>
-              </div>
-
-              {/* Ajuste de Estado Interactivo */}
-              <div className="p-3 bg-white border border-slate-200 rounded space-y-3">
-                <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                    Cambiar Estado Transaccional (Postgres):
-                  </label>
-                  <div className="flex rounded overflow-hidden border border-slate-200 text-[10px] font-mono bg-slate-50">
-                    {(["TODO", "IN_PROGRESS", "DONE"] as const).map(st => (
-                      <button
-                        key={st}
-                        onClick={() => handleStatusChangeSim(currentTask.id, st)}
-                        className={`flex-1 py-1.5 border-r border-slate-200 last:border-0 transition-all cursor-pointer ${
-                          currentTask.status === st 
-                            ? "bg-slate-900 text-white font-bold" 
-                            : "text-slate-600 bg-white hover:bg-slate-100"
-                        }`}
-                      >
-                        {st === "TODO" ? "POR HACER" : st === "IN_PROGRESS" ? "PROCESANDO" : "COMPLETADO"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                    Reasignar Responsable (Delegar):
-                  </label>
-                  <select
-                    value={currentTask.assigned_to}
-                    onChange={(e) => handleReassignSim(currentTask.id, e.target.value)}
-                    className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded focus:border-slate-900 focus:outline-none bg-white font-mono cursor-pointer"
-                  >
-                    {mockTeamUsers.map(user => (
-                      <option key={user.id} value={user.name}>
-                        {user.name} ({user.avatar})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-150 pt-3 font-mono">
-                <div>
-                  <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-widest">Responsable:</span>
-                  <span className="font-bold text-slate-900">{currentTask.assigned_to}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-widest">Creado Por:</span>
-                  <span className="text-slate-600">{currentTask.created_by}</span>
-                </div>
-              </div>
-            </div>
+          <div className="h-14 border-b border-slate-200 bg-slate-50 px-5 flex items-center justify-between flex-none select-none">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-555 flex items-center gap-1.5 font-sans">
+              <Info className="w-3.5 h-3.5 text-indigo-600" /> Detalle de Tarea Seleccionada
+            </span>
+            <button
+              onClick={() => handleDeleteTaskSim(currentTask.id)}
+              className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-all cursor-pointer"
+              title="Eliminar Tarea"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Listado Secuencial de Notas (Hilos de Comentarios) */}
-          <div className="flex-1 p-6 overflow-y-auto block space-y-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1 border-b border-slate-100 pb-2">
-              <Activity className="w-3.5 h-3.5 text-slate-400" /> Hilo Secuencial de Comentarios
-            </h4>
+          {/* Único Contenedor Central con Scrollbar Natural y Fluido para Todo el Detalle */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-white scrollbar-thin">
+            {/* Cabecera Principal de Datos de Tarea Activa */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono font-bold bg-slate-900 text-white px-2 py-0.5 rounded">
+                  {currentTask.id}
+                </span>
+                <span className={`text-[9px] font-mono font-black px-2 py-0.5 rounded border ${
+                  currentTask.quadrant === "Q1" ? "bg-red-50 text-red-700 border-red-200" :
+                  currentTask.quadrant === "Q2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                  currentTask.quadrant === "Q3" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                  "bg-slate-150 text-slate-700 border-slate-250"
+                }`}>
+                  Cuadrante {currentTask.quadrant}
+                </span>
+              </div>
+              
+              <h3 className="text-sm font-black text-slate-900 leading-snug">
+                {currentTask.title}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/70 border border-slate-100 p-3 rounded-lg font-sans">
+                {currentTask.description}
+              </p>
+            </div>
 
-            {currentTask.notes.length === 0 ? (
-              <div className="p-4 border border-dashed border-slate-200 text-center rounded text-slate-400 text-xs">
-                No hay comentarios todavía en este hilo transaccional. Añade uno abajo.
+            {/* Ajuste de Estado Interactivo */}
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3 shadow-xs">
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1 font-mono">
+                  Cambiar Estado Transaccional (Postgres):
+                </label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[10px] font-mono bg-slate-50 shadow-inner">
+                  {(["TODO", "IN_PROGRESS", "DONE"] as const).map(st => (
+                    <button
+                      key={st}
+                      onClick={() => handleStatusChangeSim(currentTask.id, st)}
+                      className={`flex-1 py-1.5 border-r border-slate-200 last:border-0 transition-all cursor-pointer text-center font-bold font-sans ${
+                        currentTask.status === st 
+                          ? "bg-slate-900 text-white shadow" 
+                          : "text-slate-600 bg-white hover:bg-slate-100"
+                      }`}
+                    >
+                      {st === "TODO" ? "POR HACER" : st === "IN_PROGRESS" ? "PROCESANDO" : "COMPLETADO"}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {currentTask.notes.map(note => (
-                  <div key={note.id} className="p-3 border border-slate-150 bg-slate-50/70 rounded flex flex-col gap-1.5 relative">
-                    <div className="flex justify-between items-center text-[9px] font-mono">
-                      <span className="font-extrabold text-slate-800">{note.user}</span>
-                      <span className="text-slate-400">{note.created_at}</span>
+
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1 font-mono">
+                  Reasignar Responsable (Delegar):
+                </label>
+                <select
+                  value={currentTask.assigned_to}
+                  onChange={(e) => handleReassignSim(currentTask.id, e.target.value)}
+                  className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:border-slate-900 focus:outline-none bg-white font-mono cursor-pointer"
+                >
+                  {mockTeamUsers.map(user => (
+                    <option key={user.id} value={user.name}>
+                      {user.name} ({user.avatar})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Tabla Simple de Metadatos */}
+            <div className="grid grid-cols-2 gap-3 text-xs border-y border-slate-100 py-3 font-mono">
+              <div>
+                <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-widest mb-0.5">Responsable:</span>
+                <span className="font-bold text-slate-900">{currentTask.assigned_to}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-widest mb-0.5">Creado Por:</span>
+                <span className="text-slate-600">{currentTask.created_by}</span>
+              </div>
+            </div>
+
+            {/* Listado Secuencial de Notas (Hilos de Comentarios) */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1 border-b border-slate-100 pb-1.5 font-mono">
+                <Activity className="w-3.5 h-3.5 text-indigo-500" /> Hilo Secuencial de Comentarios
+              </h4>
+
+              {currentTask.notes.length === 0 ? (
+                <div className="p-4 border border-dashed border-slate-200 text-center rounded-lg text-slate-400 text-xs font-sans">
+                  No hay comentarios todavía en este hilo transaccional. Añade uno abajo.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {currentTask.notes.map(note => (
+                    <div key={note.id} className="p-3 border border-slate-150 bg-slate-50/70 rounded-lg flex flex-col gap-1 relative shadow-xxs">
+                      <div className="flex justify-between items-center text-[9px] font-mono">
+                        <span className="font-extrabold text-slate-800">{note.user}</span>
+                        <span className="text-slate-400">{note.created_at}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed font-sans">{note.content}</p>
                     </div>
-                    <p className="text-xs text-slate-700 leading-relaxed font-sans">{note.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Trazamiento de Historias de Delegación */}
             {currentTask.delegation_histories.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-slate-150 space-y-3">
-                <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+              <div className="space-y-3 pt-1">
+                <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5 font-mono">
                   <Share2 className="w-3 h-3 text-slate-400" /> Historial de Delegación
                 </h5>
-                <div className="space-y-2 text-[10px] font-mono text-slate-500">
+                <div className="space-y-2 text-[10px] font-mono text-slate-500 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                   {currentTask.delegation_histories.map(h => (
-                    <div key={h.id} className="flex items-center gap-1.5 border-l-2 border-indigo-200 pl-2.5">
+                    <div key={h.id} className="flex items-center gap-1.5 border-l-2 border-indigo-200 pl-2">
                       <span className="text-slate-600 font-bold">{h.from_user}</span>
                       <span>➜</span>
                       <span className="text-indigo-700 font-bold">{h.to_user}</span>
-                      <span className="text-[9px] text-slate-400 font-light marginLeft-auto">({h.assigned_at})</span>
+                      <span className="text-[9px] text-slate-400 font-light ml-auto">({h.assigned_at})</span>
                     </div>
                   ))}
                 </div>
@@ -1320,13 +1356,13 @@ services:
             )}
 
             {/* Archivos Adjuntos Asociados con uploader asíncrono real */}
-            <div className="mt-5 pt-4 border-t border-slate-150 space-y-3">
+            <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
-                <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5 font-mono">
                   <Paperclip className="w-3.5 h-3.5 text-slate-400" /> Adjuntos Asociados (Volumen Local)
                 </h5>
-                <label className="text-[10px] font-mono font-bold text-indigo-650 hover:text-indigo-800 hover:underline cursor-pointer flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 transition-all select-none">
-                  <span>+ Subir Legítimo</span>
+                <label className="text-[10px] font-mono font-bold text-indigo-650 hover:text-indigo-800 hover:underline cursor-pointer flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 transition-all select-none">
+                  <span>+ Subir</span>
                   <input
                     type="file"
                     onChange={handleFileUpload}
@@ -1336,14 +1372,14 @@ services:
               </div>
 
               {currentTask.attachments.length === 0 ? (
-                <div className="p-4 border border-dashed border-slate-200 text-center rounded text-slate-400 text-xs">
-                  Sin adjuntos de arquitectura. ¡Haz clic en "+ Subir Legítimo" para adjuntar un documento real!
+                <div className="p-4 border border-dashed border-slate-200 text-center rounded-lg text-slate-400 text-xs font-sans">
+                  Sin adjuntos de arquitectura. ¡Haz clic en "+ Subir" para adjuntar un documento real!
                 </div>
               ) : (
                 <div className="space-y-1.5 text-[10px] font-mono text-indigo-700">
                   {currentTask.attachments.map(att => (
-                    <div key={att.id} className="flex items-center gap-2 p-2 bg-slate-100 rounded border border-slate-200">
-                      <FileText className="w-3.5 h-3.5 text-slate-500 hover:rotate-12 transition-transform" />
+                    <div key={att.id} className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg border border-slate-200 shadow-xxs">
+                      <FileText className="w-3.5 h-3.5 text-slate-500 hover:rotate-6 transition-transform transition-colors" />
                       <div className="flex-1 overflow-hidden">
                         <span className="font-bold text-slate-800 line-clamp-1">{att.file_name}</span>
                         <span className="text-slate-400 text-[8px] block">{att.file_path}</span>
@@ -1352,7 +1388,7 @@ services:
                         href={att.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[8px] bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-0.5 px-2 rounded uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer"
+                        className="text-[8px] bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-0.5 px-2 rounded-md uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer"
                       >
                         Abrir
                       </a>
@@ -1363,15 +1399,15 @@ services:
             </div>
           </div>
 
-          {/* Formulario Secuencial para añadir Notas */}
-          <div className="p-4 bg-slate-50 border-t border-slate-250 flex-none shadow-xs">
+          {/* Formulario Secuencial Fijo abajo para añadir Notas */}
+          <div className="p-4 bg-slate-50 border-t border-slate-200 flex-none shadow-xs">
             <form onSubmit={handleAddNoteSim} className="relative flex items-center">
               <input
                 type="text"
                 value={newNoteContent}
                 onChange={(e) => setNewNoteContent(e.target.value)}
                 placeholder="Escribe un comentario en esta tarea..."
-                className="w-full text-xs p-3.5 pr-11 bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-900 transition-all font-sans"
+                className="w-full text-xs p-3.5 pr-11 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 transition-all font-sans"
               />
               <button
                 type="submit"
