@@ -42,6 +42,7 @@ const defaultTasks = [
     assigned_to: "Marie Puscan",
     created_at: "Hoy, 08:30 AM",
     due_date: "Inmediata",
+    tags: ["Negocio", "Desarrollo"],
     notes: [
       { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
       { id: 2, user: "Osman Marin", userEmail: "osman.marin@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
@@ -63,6 +64,7 @@ const defaultTasks = [
     assigned_to: "Marie Puscan",
     created_at: "Ayer, 14:20 PM",
     due_date: "Viernes, 29 de Mayo",
+    tags: ["Negocio", "Desarrollo"],
     notes: [
       { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
     ],
@@ -79,6 +81,7 @@ const defaultTasks = [
     assigned_to: "Osman Marin",
     created_at: "Hace 2 días",
     due_date: "Lunes, 1 de Junio",
+    tags: ["Negocio", "Desarrollo"],
     notes: [],
     attachments: [
       { id: 2, file_name: "prod_docker_architecture.pdf", file_path: "/uploads/prod_docker_architecture.pdf", uploaded_at: "Ayer, 10:00 AM" }
@@ -95,6 +98,7 @@ const defaultTasks = [
     assigned_to: "Marie Puscan",
     created_at: "Hace 3 días",
     due_date: "Fin de mes",
+    tags: ["Negocio"],
     notes: [
       { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
     ],
@@ -102,6 +106,51 @@ const defaultTasks = [
     delegation_histories: [
       { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 3 días" }
     ]
+  },
+  {
+    id: "#802",
+    title: "Planificar viaje de fin de semana con la familia",
+    description: "Investigar cabañas o posadas familiares en el campo para desconectar el fin de semana. Tratar de reservar antes del jueves.",
+    quadrant: "Q2",
+    status: "TODO",
+    created_by: "Osman Marin",
+    assigned_to: "Osman Marin",
+    created_at: "Hoy, 10:00 AM",
+    due_date: "Sábado, 30 de Mayo",
+    tags: ["Familiar", "Ocio"],
+    notes: [],
+    attachments: [],
+    delegation_histories: []
+  },
+  {
+    id: "#803",
+    title: "Comprar regalo de aniversario para mamá",
+    description: "Comprar un juego de macetas artesanales o flores finas y coordinar envío para el sábado por la mañana.",
+    quadrant: "Q2",
+    status: "TODO",
+    created_by: "Marie Puscan",
+    assigned_to: "Marie Puscan",
+    created_at: "Ayer, 11:30 AM",
+    due_date: "Viernes, 29 de Mayo",
+    tags: ["Familiar", "Personal"],
+    notes: [],
+    attachments: [],
+    delegation_histories: []
+  },
+  {
+    id: "#804",
+    title: "Renovar membresía anual de club de pádel",
+    description: "Coordinar el pago antes de que venza el plazo de descuento por pago anticipado. Prioridad baja.",
+    quadrant: "Q4",
+    status: "TODO",
+    created_by: "Osman Marin",
+    assigned_to: "Osman Marin",
+    created_at: "Hace 2 días",
+    due_date: "Fin de mes",
+    tags: ["Personal", "Ocio"],
+    notes: [],
+    attachments: [],
+    delegation_histories: []
   },
   {
     id: "#104",
@@ -112,6 +161,7 @@ const defaultTasks = [
     created_by: "Osman Marin",
     assigned_to: "Marie Puscan",
     created_at: "Hace 1 semana",
+    tags: ["Negocio"],
     notes: [],
     attachments: [],
     delegation_histories: [
@@ -167,7 +217,7 @@ app.get("/api/tasks", (req, res) => {
 
 // 2. Crear una nueva tarea colaborativa
 app.post("/api/tasks", (req, res) => {
-  const { title, description, quadrant, assigned_to, created_by, due_date } = req.body;
+  const { title, description, quadrant, assigned_to, created_by, due_date, tags } = req.body;
   
   if (!title) {
     return res.status(400).json({ error: "El título es obligatorio" });
@@ -192,6 +242,7 @@ app.post("/api/tasks", (req, res) => {
     assigned_to: assigned_to || "Osman Marin",
     created_at: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + ", Hoy",
     due_date: due_date || "Sin plazo",
+    tags: tags || [],
     notes: [],
     attachments: [],
     delegation_histories: [
@@ -212,7 +263,7 @@ app.post("/api/tasks", (req, res) => {
 // 3. Modificar cuadrante o estado de una tarea (Trazando delegación si aplica)
 app.patch("/api/tasks/:id", (req, res) => {
   const { id } = req.params;
-  const { status, quadrant, assigned_to, due_date } = req.body;
+  const { status, quadrant, assigned_to, due_date, tags } = req.body;
   const tasks = readTasks();
   const taskIndex = tasks.findIndex(t => t.id === id);
 
@@ -237,6 +288,7 @@ app.patch("/api/tasks/:id", (req, res) => {
   if (status !== undefined) task.status = status;
   if (quadrant !== undefined) task.quadrant = quadrant;
   if (due_date !== undefined) task.due_date = due_date;
+  if (tags !== undefined) task.tags = tags;
 
   tasks[taskIndex] = task;
   writeTasks(tasks);

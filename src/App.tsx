@@ -27,7 +27,8 @@ import {
   Activity,
   Send,
   Trash2,
-  Lock
+  Lock,
+  Tag
 } from "lucide-react";
 
 interface UserResponseSim {
@@ -71,7 +72,19 @@ interface TaskSim {
   notes: TaskNoteSim[];
   attachments: TaskAttachmentSim[];
   delegation_histories: DelegationHistorySim[];
+  tags?: string[];
 }
+
+const TAG_COLORS: Record<string, { bg: string, text: string, border: string }> = {
+  "Negocio": { bg: "bg-blue-50 text-blue-700 border-blue-200", text: "text-blue-700", border: "border-blue-200" },
+  "Familiar": { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", text: "text-emerald-700", border: "border-emerald-200" },
+  "Ocio": { bg: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200", text: "text-fuchsia-700", border: "border-fuchsia-200" },
+  "Desarrollo": { bg: "bg-violet-50 text-violet-700 border-violet-200", text: "text-violet-700", border: "border-violet-200" },
+  "Personal": { bg: "bg-rose-50 text-rose-700 border-rose-200", text: "text-rose-700", border: "border-rose-200" },
+  "Finanzas": { bg: "bg-amber-50 text-amber-700 border-amber-200", text: "text-amber-700", border: "border-amber-200" },
+};
+
+const DEFAULT_TAG_COLOR = { bg: "bg-slate-50 text-slate-700 border-slate-200", text: "text-slate-700", border: "border-slate-200" };
 
 export default function App() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -108,6 +121,7 @@ export default function App() {
       assigned_to: "Marie Puscan",
       created_at: "Hoy, 08:30 AM",
       due_date: "Inmediata",
+      tags: ["Negocio", "Desarrollo"],
       notes: [
         { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Analizando los alias de Pydantic v2. Parece que los campos del payload JWT ignoraban la comprobación de expiración.", created_at: "Hoy, 09:12 AM" },
         { id: 2, user: "Osman Marin", userEmail: "osman.marin@matrixos.io", content: "Estado actualizado a urgente. Esto podría exponer endpoints del equipo sin el Bearer token correcto.", created_at: "Hoy, 10:42 AM" }
@@ -129,6 +143,7 @@ export default function App() {
       assigned_to: "Marie Puscan",
       created_at: "Ayer, 14:20 PM",
       due_date: "Viernes, 29 de Mayo",
+      tags: ["Negocio", "Desarrollo"],
       notes: [
         { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Hemos detectado picos de latencia de hasta 250ms al cargar el cuadrante consolidado. Con el índice bajará a 12ms.", created_at: "Ayer, 15:00 PM" }
       ],
@@ -145,6 +160,7 @@ export default function App() {
       assigned_to: "Osman Marin",
       created_at: "Hace 2 días",
       due_date: "Lunes, 1 de Junio",
+      tags: ["Negocio", "Desarrollo"],
       notes: [],
       attachments: [
         { id: 2, file_name: "prod_docker_architecture.pdf", file_path: "/uploads/prod_docker_architecture.pdf", uploaded_at: "Ayer, 10:00 AM" }
@@ -161,6 +177,7 @@ export default function App() {
       assigned_to: "Marie Puscan",
       created_at: "Hace 3 días",
       due_date: "Fin de mes",
+      tags: ["Negocio"],
       notes: [
         { id: 1, user: "Marie Puscan", userEmail: "marie.puscan@matrixos.io", content: "Ya comencé a redactar el archivo wiki/Alembic-Async.md. Necesito confirmación del esquema de modelos de Fase 1 para publicarlo.", created_at: "Hace 1 día" }
       ],
@@ -168,6 +185,51 @@ export default function App() {
       delegation_histories: [
         { id: 1, from_user: "Osman Marin", to_user: "Marie Puscan", assigned_at: "Hace 3 días" }
       ]
+    },
+    {
+      id: "#802",
+      title: "Planificar viaje de fin de semana con la familia",
+      description: "Investigar cabañas o posadas familiares en el campo para desconectar el fin de semana. Tratar de reservar antes del jueves.",
+      quadrant: "Q2",
+      status: "TODO",
+      created_by: "Osman Marin",
+      assigned_to: "Osman Marin",
+      created_at: "Hoy, 10:00 AM",
+      due_date: "Sábado, 30 de Mayo",
+      tags: ["Familiar", "Ocio"],
+      notes: [],
+      attachments: [],
+      delegation_histories: []
+    },
+    {
+      id: "#803",
+      title: "Comprar regalo de aniversario para mamá",
+      description: "Comprar un juego de macetas artesanales o flores finas y coordinar envío para el sábado por la mañana.",
+      quadrant: "Q2",
+      status: "TODO",
+      created_by: "Marie Puscan",
+      assigned_to: "Marie Puscan",
+      created_at: "Ayer, 11:30 AM",
+      due_date: "Viernes, 29 de Mayo",
+      tags: ["Familiar", "Personal"],
+      notes: [],
+      attachments: [],
+      delegation_histories: []
+    },
+    {
+      id: "#804",
+      title: "Renovar membresía anual de club de pádel",
+      description: "Coordinar el pago antes de que venza el plazo de descuento por pago anticipado. Prioridad baja.",
+      quadrant: "Q4",
+      status: "TODO",
+      created_by: "Osman Marin",
+      assigned_to: "Osman Marin",
+      created_at: "Hace 2 días",
+      due_date: "Fin de mes",
+      tags: ["Personal", "Ocio"],
+      notes: [],
+      attachments: [],
+      delegation_histories: []
     },
     {
       id: "#104",
@@ -178,6 +240,7 @@ export default function App() {
       created_by: "Osman Marin",
       assigned_to: "Marie Puscan",
       created_at: "Hace 1 semana",
+      tags: ["Negocio"],
       notes: [],
       attachments: [],
       delegation_histories: [
@@ -190,9 +253,18 @@ export default function App() {
   const [selectedTaskId, setSelectedTaskId] = useState<string>("#492");
   const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
   
+  // Estado para filtrado y categorización por etiquetas (tags)
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [newSelectedTags, setNewSelectedTags] = useState<string[]>([]);
+  
   React.useEffect(() => {
     setDeleteConfirmTaskId(null);
   }, [selectedTaskId]);
+
+  // Selector de filtro de etiquetas cruzado
+  const filteredTasks = selectedTagFilter
+    ? tasks.filter(t => t.tags && t.tags.includes(selectedTagFilter))
+    : tasks;
 
   const currentTask = tasks.find(t => t.id === selectedTaskId) || tasks[0] || {
     id: "#492",
@@ -382,6 +454,17 @@ export default function App() {
     }
   };
 
+  // Abrir Modal de Tarea con reseteo completo e inicialización de tags
+  const handleOpenAddTaskModal = (initialDueDate?: string) => {
+    setNewTitle("");
+    setNewDescription("");
+    setNewQuadrant("Q1");
+    setNewAssignee("Marie Puscan");
+    setNewDueDate(initialDueDate || "");
+    setNewSelectedTags([]);
+    setShowAddTaskModal(true);
+  };
+
   // Agregar una tarea interactiva real en el Servidor
   const handleCreateTaskSim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,7 +482,8 @@ export default function App() {
           quadrant: newQuadrant,
           assigned_to: newAssignee,
           created_by: currentUserName,
-          due_date: newDueDate || "Sin plazo"
+          due_date: newDueDate || "Sin plazo",
+          tags: newSelectedTags
         })
       });
 
@@ -423,6 +507,7 @@ export default function App() {
         assigned_to: newAssignee,
         created_at: "Ahora mismo",
         due_date: newDueDate || "Sin plazo",
+        tags: newSelectedTags,
         notes: [],
         attachments: [],
         delegation_histories: [
@@ -442,6 +527,65 @@ export default function App() {
     setNewTitle("");
     setNewDescription("");
     setNewDueDate("");
+    setNewSelectedTags([]);
+  };
+
+  // Agregar una etiqueta a una tarea en caliente (PATCH API)
+  const handleAddTagToTask = async (taskId: string, tag: string) => {
+    let finalTag = tag;
+    if (tag === "__custom__") {
+      const custom = prompt("Escribe el nombre de la nueva categoría:");
+      if (!custom || !custom.trim()) return;
+      finalTag = custom.trim();
+    }
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const currentTags = task.tags || [];
+    if (currentTags.includes(finalTag)) return;
+
+    const newTags = [...currentTags, finalTag];
+    
+    // Actualización optimista local
+    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, tags: newTags } : t)));
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: newTags })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Error actualizando tags en API, usando local:", err);
+    }
+  };
+
+  // Quitar una etiqueta de una tarea en caliente (PATCH API)
+  const handleRemoveTagFromTask = async (taskId: string, tagToRemove: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const currentTags = task.tags || [];
+    const newTags = currentTags.filter(tg => tg !== tagToRemove);
+
+    // Actualización optimista local
+    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, tags: newTags } : t)));
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: newTags })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
+      }
+    } catch (err) {
+      console.warn("Error quitando tag en API, usando local:", err);
+    }
   };
 
   // Agregar una nota real en la DB
@@ -925,7 +1069,7 @@ services:
           </div>
           <nav className="hidden md:flex gap-6 text-xs font-bold uppercase tracking-wider text-slate-500">
             <span className="text-slate-900 border-b-2 border-slate-900 pb-5 pt-5 cursor-default">Fase 2: Conexiones & Endpoints</span>
-            <span className="hover:text-slate-900 transition-colors cursor-pointer py-5" onClick={() => setShowAddTaskModal(true)}>
+            <span className="hover:text-slate-900 transition-colors cursor-pointer py-5" onClick={() => handleOpenAddTaskModal()}>
               + Programar Tarea
             </span>
           </nav>
@@ -963,7 +1107,7 @@ services:
           </div>
 
           <button 
-            onClick={() => setShowAddTaskModal(true)}
+            onClick={() => handleOpenAddTaskModal()}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono font-bold rounded uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Nueva Tarea
@@ -1004,6 +1148,41 @@ services:
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Barra de Filtros de Etiquetas */}
+          <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-4 rounded-lg shadow-xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1">
+              <Tag className="w-3.5 h-3.5 text-indigo-600" /> FILTRAR POR CATEGORÍA:
+            </span>
+            <button
+              onClick={() => setSelectedTagFilter(null)}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                selectedTagFilter === null
+                  ? "bg-slate-900 text-white font-black shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
+            >
+              Todos ({tasks.length})
+            </button>
+            {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].map(tg => {
+              const isSelected = selectedTagFilter === tg;
+              const count = tasks.filter(t => t.tags?.includes(tg)).length;
+              return (
+                <button
+                  key={tg}
+                  onClick={() => setSelectedTagFilter(tg)}
+                  className={`px-3 py-1 text-xs font-extrabold rounded-md border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-slate-900 text-white border-slate-900 font-extrabold shadow-sm scale-[1.02]"
+                      : `${TAG_COLORS[tg]?.bg || "bg-slate-100 text-slate-700 border-slate-200"} hover:brightness-95`
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-current"}`} />
+                  {tg} <span className="text-[9px] opacity-75 font-mono">({count})</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Ejes y Cuadrícula de la Matriz */}
@@ -1058,12 +1237,12 @@ services:
                       Q1: Acción Inmediata
                     </span>
                     <span className="bg-red-50 text-red-600 text-[9px] px-2 py-0.5 rounded font-black font-mono">
-                      {tasks.filter(t => t.quadrant === "Q1").length} Activas
+                      {filteredTasks.filter(t => t.quadrant === "Q1").length} Activas
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    {tasks.filter(t => t.quadrant === "Q1").map(task => (
+                    {filteredTasks.filter(t => t.quadrant === "Q1").map(task => (
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
@@ -1083,6 +1262,18 @@ services:
                             {task.id}
                           </span>
                         </div>
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {task.tags.map(tg => {
+                              const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                              return (
+                                <span key={tg} className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded border uppercase tracking-wider ${colors.bg}`}>
+                                  {tg}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-600 font-bold">{task.assigned_to}</span>
                           {task.due_date && (
@@ -1107,12 +1298,12 @@ services:
                       Q2: Enfoque Estratégico
                     </span>
                     <span className="bg-indigo-50 text-indigo-700 text-[9px] px-2 py-0.5 rounded font-black font-mono">
-                      {tasks.filter(t => t.quadrant === "Q2").length} Activas
+                      {filteredTasks.filter(t => t.quadrant === "Q2").length} Activas
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    {tasks.filter(t => t.quadrant === "Q2").map(task => (
+                    {filteredTasks.filter(t => t.quadrant === "Q2").map(task => (
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
@@ -1132,6 +1323,18 @@ services:
                             {task.id}
                           </span>
                         </div>
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {task.tags.map(tg => {
+                              const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                              return (
+                                <span key={tg} className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded border uppercase tracking-wider ${colors.bg}`}>
+                                  {tg}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-600 font-bold">{task.assigned_to}</span>
                           {task.due_date && (
@@ -1156,12 +1359,12 @@ services:
                       Q3: Cola de Delegación
                     </span>
                     <span className="bg-amber-50 text-amber-700 text-[9px] px-2 py-0.5 rounded font-black font-mono">
-                      {tasks.filter(t => t.quadrant === "Q3").length} Activas
+                      {filteredTasks.filter(t => t.quadrant === "Q3").length} Activas
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    {tasks.filter(t => t.quadrant === "Q3").map(task => (
+                    {filteredTasks.filter(t => t.quadrant === "Q3").map(task => (
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
@@ -1181,6 +1384,18 @@ services:
                             {task.id}
                           </span>
                         </div>
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {task.tags.map(tg => {
+                              const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                              return (
+                                <span key={tg} className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded border uppercase tracking-wider ${colors.bg}`}>
+                                  {tg}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-amber-800 font-bold">{task.assigned_to}</span>
                           {task.due_date && (
@@ -1204,13 +1419,13 @@ services:
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                       Q4: Baja Prioridad
                     </span>
-                    <span className="bg-slate-55 text-slate-600 text-[9px] px-2 py-0.5 rounded font-black font-mono">
-                      {tasks.filter(t => t.quadrant === "Q4").length} Activas
+                    <span className="bg-slate-50 text-slate-650 text-[9px] px-2 py-0.5 rounded font-black font-mono">
+                      {filteredTasks.filter(t => t.quadrant === "Q4").length} Activas
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    {tasks.filter(t => t.quadrant === "Q4").map(task => (
+                    {filteredTasks.filter(t => t.quadrant === "Q4").map(task => (
                       <div
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
@@ -1218,8 +1433,8 @@ services:
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={`p-3 rounded border transition-all cursor-grab active:cursor-grabbing text-left relative group select-none hover:shadow-md ${
                           selectedTaskId === task.id
-                            ? "border-slate-500 bg-slate-100 shadow-xs"
-                            : "border-slate-100 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
+                            ? "border-slate-505 bg-slate-100 shadow-xs"
+                            : "border-slate-101 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2">
@@ -1230,6 +1445,18 @@ services:
                             {task.id}
                           </span>
                         </div>
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 opacity-60">
+                            {task.tags.map(tg => {
+                              const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                              return (
+                                <span key={tg} className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded border uppercase tracking-wider ${colors.bg}`}>
+                                  {tg}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between mt-3 text-[10px] font-mono pt-1.5 border-t border-slate-100">
                           <span className="text-slate-400 font-bold">{task.assigned_to}</span>
                           {task.due_date && (
@@ -1331,7 +1558,7 @@ services:
                   const day = idx + 1;
                   const isSelected = selectedCalendarDay === day;
                   const isCurrentNow = new Date().getDate() === day && new Date().getMonth() === calendarMonth && new Date().getFullYear() === calendarYear;
-                  const matchingTasks = tasks.filter(t => matchTaskWithDate(t.due_date, calendarYear, calendarMonth, day));
+                  const matchingTasks = filteredTasks.filter(t => matchTaskWithDate(t.due_date, calendarYear, calendarMonth, day));
 
                   return (
                     <div
@@ -1437,8 +1664,7 @@ services:
                     type="button"
                     onClick={() => {
                       const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
-                      setNewDueDate(dateString);
-                      setShowAddTaskModal(true);
+                      handleOpenAddTaskModal(dateString);
                     }}
                     className="px-3 py-1.5 bg-slate-900 border border-slate-950 text-white hover:bg-slate-800 rounded-md text-[10px] font-sans font-black uppercase tracking-wider transition-all cursor-pointer select-none whitespace-nowrap"
                   >
@@ -1637,6 +1863,53 @@ services:
               <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/70 border border-slate-100 p-3 rounded-lg font-sans">
                 {currentTask.description}
               </p>
+
+              {/* Visualizador de Etiquetas en Detalle */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">
+                  Categorías (Etiquetas):
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {currentTask.tags && currentTask.tags.map(tg => {
+                    const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                    return (
+                      <span 
+                        key={tg} 
+                        className={`text-[9px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider flex items-center gap-1 ${colors.bg}`}
+                      >
+                        {tg}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTagFromTask(currentTask.id, tg)}
+                          className="text-[9px] font-black hover:text-red-500 font-mono transition-colors ml-0.5 cursor-pointer"
+                          title="Quitar categoría"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAddTagToTask(currentTask.id, e.target.value);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="text-[9px] font-bold px-2 py-0.5 rounded border border-dashed border-slate-300 bg-white text-slate-500 cursor-pointer focus:outline-none hover:bg-slate-50"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>+ Categoría</option>
+                    {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"]
+                      .filter(tg => !currentTask.tags?.includes(tg))
+                      .map(tg => (
+                        <option key={tg} value={tg}>{tg}</option>
+                      ))
+                    }
+                    <option value="__custom__">+ Crear Nueva...</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Ajuste de Estado Interactivo */}
@@ -1906,6 +2179,51 @@ services:
                   placeholder="Por ejemplo: Mañana, Lunes 1 de Junio, Inmediata"
                   className="w-full text-xs p-3 border border-slate-200 rounded focus:border-slate-900 focus:outline-none font-sans"
                 />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                  Categorías (Etiquetas):
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded">
+                  {["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].map(tg => {
+                    const isSelected = newSelectedTags.includes(tg);
+                    const colors = TAG_COLORS[tg] || DEFAULT_TAG_COLOR;
+                    return (
+                      <button
+                        type="button"
+                        key={tg}
+                        onClick={() => {
+                          if (isSelected) {
+                            setNewSelectedTags(prev => prev.filter(t => t !== tg));
+                          } else {
+                            setNewSelectedTags(prev => [...prev, tg]);
+                          }
+                        }}
+                        className={`px-2 py-1 text-[10px] font-extrabold rounded cursor-pointer border transition-all ${
+                          isSelected
+                            ? "bg-slate-900 border-slate-900 text-white font-black"
+                            : `${colors.bg} hover:brightness-95`
+                        }`}
+                      >
+                        {tg}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = prompt("Escribe el nombre de la nueva categoría:");
+                      if (name && name.trim()) {
+                        const trimmed = name.trim();
+                        setNewSelectedTags(prev => [...prev, trimmed]);
+                      }
+                    }}
+                    className="px-2 py-1 text-[10px] font-bold rounded border border-dashed border-slate-300 bg-white hover:bg-slate-50 text-slate-500 cursor-pointer"
+                  >
+                    + Crear...
+                  </button>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex justify-end gap-2">
