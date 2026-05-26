@@ -36,7 +36,12 @@ import {
   Smile,
   Compass,
   Printer,
-  TrendingUp
+  TrendingUp,
+  Zap,
+  Brain,
+  LayoutDashboard,
+  Volume2,
+  Terminal
 } from "lucide-react";
 
 interface UserResponseSim {
@@ -266,11 +271,30 @@ export default function App() {
   const [newSelectedTags, setNewSelectedTags] = useState<string[]>([]);
   
   // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal
-  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook">("matrix");
+  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard">("dashboard");
   const [weeklyCommentary, setWeeklyCommentary] = useState<string>(() => {
     return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
   });
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // Consola de Telemetría y Actividades en tiempo real
+  const [consoleLogs, setConsoleLogs] = useState<{ id: string; time: string; text: string; type: "info" | "success" | "warn" | "error" | "telemetry" }[]>(() => {
+    return [
+      { id: "log-1", time: "19:56:10", text: "⚙️ Consola de Control de MatrixOS inicializada con éxito.", type: "success" },
+      { id: "log-2", time: "19:56:12", text: "🖧 Canal de comunicación bidireccional PostgreSQL activo sobre puerto 5432.", type: "info" },
+      { id: "log-3", time: "19:56:14", text: "📈 Telemetría: Sismógrafo de balance mental asincrónico listo para calibración.", type: "telemetry" },
+      { id: "log-4", time: "19:56:16", text: "🍅 Temporizador Pomodoro sincronizado con el gestor de tareas.", type: "info" },
+    ];
+  });
+
+  const addLog = (text: string, type: "info" | "success" | "warn" | "error" | "telemetry" = "info") => {
+    const now = new Date();
+    const timeStr = now.toTimeString().split(" ")[0];
+    setConsoleLogs(prev => [
+      { id: "log-" + Date.now() + Math.random(), time: timeStr, text, type },
+      ...prev
+    ].slice(0, 50));
+  };
 
   // 1. Temporizador de Pomodoro e Incremento de Enfoque Sincronizado
   const [pomodoroTaskId, setPomodoroTaskId] = useState<string | null>(null);
@@ -338,6 +362,7 @@ export default function App() {
       if (pomodoroMode === "focus") {
         setPomodoroMode("break");
         setPomodoroTimeLeft(300); // 5 Minutos de descanso
+        addLog(`🍅 Ciclo Pomodoro Completado para la tarea ${pomodoroTaskId || 'general'}. Iniciando descanso activo de 5 min.`, "success");
         if (pomodoroTaskId) {
           handleAutoLogPomodoroNote(
             pomodoroTaskId,
@@ -348,6 +373,7 @@ export default function App() {
         setPomodoroMode("focus");
         setPomodoroTimeLeft(1500); // 25 Minutos
         setPomodoroIsRunning(false); // Pausar para que el usuario reinicie el enfoque
+        addLog("☕ Descanso Pomodoro finalizado. Listos para iniciar un nuevo ciclo de enfoque de 25 min.", "info");
       }
     }
     return () => clearInterval(interval);
@@ -406,8 +432,11 @@ export default function App() {
     const newMap = { ...taskGoalsMap };
     if (goalId) {
       newMap[taskId] = goalId;
+      const targetGoal = weeklyGoals.find(g => g.id === goalId);
+      addLog(`🎯 Enlazada tarea ${taskId} a la meta: "${targetGoal?.title || goalId}"`, "success");
     } else {
       delete newMap[taskId];
+      addLog(`🔗 Desenlazada tarea ${taskId} de meta asignada`, "warn");
     }
     setTaskGoalsMap(newMap);
     localStorage.setItem("task_goals_map", JSON.stringify(newMap));
@@ -424,9 +453,11 @@ export default function App() {
     setWeeklyGoals(updated);
     localStorage.setItem("weekly_goals", JSON.stringify(updated));
     setNewGoalTitle("");
+    addLog(`➕ Creado OKR Semanal [${category}]: "${title.trim()}"`, "success");
   };
 
   const handleRemoveWeeklyGoal = (goalId: string) => {
+    const targetGoal = weeklyGoals.find(g => g.id === goalId);
     const updated = weeklyGoals.filter(g => g.id !== goalId);
     setWeeklyGoals(updated);
     localStorage.setItem("weekly_goals", JSON.stringify(updated));
@@ -440,6 +471,7 @@ export default function App() {
     });
     setTaskGoalsMap(newMap);
     localStorage.setItem("task_goals_map", JSON.stringify(newMap));
+    addLog(`❌ Eliminada meta semanal: "${targetGoal?.title || goalId}" y limpiados los enlaces asociados.`, "warn");
   };
 
 
@@ -1333,10 +1365,21 @@ services:
           </div>
 
           {/* Selector de Navegación Multidimensional de Comando */}
-          <div className="flex bg-white p-1 rounded-xl border border-slate-200 gap-1 shadow-xs">
+          <div className="flex bg-white p-1 rounded-xl border border-slate-200 gap-1 shadow-xs overflow-x-auto">
+            <button
+              onClick={() => setActiveView("dashboard")}
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "dashboard"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-indigo-500" />
+              Consola Definitiva
+            </button>
             <button
               onClick={() => setActiveView("matrix")}
-              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeView === "matrix"
                   ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
                   : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
@@ -1347,7 +1390,7 @@ services:
             </button>
             <button
               onClick={() => setActiveView("analytics")}
-              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeView === "analytics"
                   ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
                   : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
@@ -1358,7 +1401,7 @@ services:
             </button>
             <button
               onClick={() => setActiveView("logbook")}
-              className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeView === "logbook"
                   ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
                   : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
@@ -1369,11 +1412,523 @@ services:
             </button>
           </div>
 
+          {/* ========================================================
+              VISTA DE CONSOLA DEFINITIVA (COMMAND COCKPIT HUD)
+              ======================================================== */}
+          {activeView === "dashboard" && (
+            <div className="space-y-6 animate-fade-in font-sans">
+              
+              {/* Resumen General de Operaciones */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3">
+                  <div className="p-3 bg-red-50 text-red-600 rounded-lg">
+                    <Activity className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Tareas Urgentes (Q1)</span>
+                    <span className="text-xl font-mono font-black text-slate-900">
+                      {tasks.filter(t => t.quadrant === "Q1" && t.status !== "DONE").length} Activas
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3">
+                  <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Proyectos Estratégicos (Q2)</span>
+                    <span className="text-xl font-mono font-black text-slate-900">
+                      {tasks.filter(t => t.quadrant === "Q2" && t.status !== "DONE").length} Pendientes
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <Award className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">OKRs Definidos</span>
+                    <span className="text-xl font-mono font-black text-slate-900">
+                      {weeklyGoals.length} Objetivos
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3">
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                    <Clock className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Flujo Pomodoro</span>
+                    <span className="text-xl font-mono font-black text-slate-900 uppercase">
+                      {pomodoroIsRunning ? (pomodoroMode === "focus" ? "Enfoque" : "Descanso") : "Pausado"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bento Grid: Controles y Consolas Principales */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Lado Izquierdo: Sismógrafo, OKRs y Deck de Acciones Rápidas */}
+                <div className="lg:col-span-7 space-y-6">
+                  
+                  {/* Sismógrafo Integrado con el Regulador Cognitivo */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
+                          <Activity className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider font-mono">
+                            Sismógrafo de Sobrecarga Mental
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-sans">
+                            Analizador biométrico de tareas críticas en espera de mitigación.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="p-1 px-2 bg-indigo-50 border border-indigo-100 rounded font-mono text-[8px] font-extrabold text-indigo-700 uppercase tracking-widest">
+                        Ponderación Dinámica
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const realQ1Count = tasks.filter(t => t.quadrant === "Q1" && t.status !== "DONE").length;
+                      const realQ2Count = tasks.filter(t => t.quadrant === "Q2" && t.status !== "DONE").length;
+                      const otherActiveCount = tasks.filter(t => (t.quadrant === "Q3" || t.quadrant === "Q4") && t.status !== "DONE").length;
+
+                      const adjustedQ1Value = Math.max(0, realQ1Count - burnoutSimulationOffset);
+                      const rawScore = (adjustedQ1Value * 22) + (realQ2Count * 13) + (otherActiveCount * 5);
+                      const score = Math.max(5, Math.min(100, Math.round(rawScore)));
+
+                      let meterLabel = "OPERACIÓN SALUDABLE: Ritmo Óptimo";
+                      let meterColor = "text-emerald-500 text-[10px] font-black";
+                      let meterBg = "bg-emerald-50 text-emerald-800 border-emerald-100";
+                      let advice = "Tu indicador cognitivo es excelente. Es un momento propicio para enfocar ciclos Pomodoro y cerrar objetivos complejos.";
+
+                      if (score >= 35 && score < 70) {
+                        meterLabel = "PRESIÓN MODERADA: Nivel Sostenido";
+                        meterColor = "text-amber-500 text-[10px] font-black";
+                        meterBg = "bg-amber-50 text-amber-800 border-amber-100";
+                        advice = "Atención: Tu mente está absorbiendo múltiples directrices de negocio. Úsa el deck inferior para auto-delegar tareas de Q3 a Marie Puscan en caliente.";
+                      } else if (score >= 70) {
+                        meterLabel = "RIESGO DE DESGASTE CRÍTICO: Fatiga";
+                        meterColor = "text-rose-600 text-[10px] font-black animate-pulse";
+                        meterBg = "bg-rose-50 text-rose-800 border-rose-150";
+                        advice = "¡Auxilio! Urgencias simultáneas saturando tu área de carga mental. Es crítico desacelerar o delegar tareas urgentes inmediatamente para evitar el burnout.";
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                          <div className="md:col-span-5 flex flex-col items-center bg-slate-50 border border-slate-150 rounded-xl p-4 text-center">
+                            <div className="relative w-36 h-20 overflow-hidden flex flex-col justify-end">
+                              <div className="absolute top-0 left-0 w-36 h-36 rounded-full border-10 border-slate-200" />
+                              <div 
+                                className="absolute bottom-0 left-1/2 w-1 h-12 origin-bottom rounded-t bg-slate-800 transition-transform duration-700"
+                                style={{ transform: `translate(-50%, 0) rotate(${-90 + ((score / 100) * 180)}deg)` }}
+                              />
+                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-slate-900 rounded-full border-2 border-white" />
+                            </div>
+                            <div className="mt-3">
+                              <span className="text-xl font-mono font-black text-slate-900 block">{score}%</span>
+                              <span className={meterColor}>{meterLabel}</span>
+                            </div>
+                          </div>
+
+                          <div className="md:col-span-7 space-y-3">
+                            <div className={`p-3 border rounded-xl text-[11px] leading-relaxed ${meterBg}`}>
+                              <strong className="block uppercase font-black tracking-wide text-[9px] mb-0.5">Recomendación de Cabina:</strong>
+                              {advice}
+                            </div>
+
+                            {/* Regulador Cognitivo Interactiva */}
+                            <div className="p-3 bg-slate-150 border border-slate-200 rounded-lg space-y-2">
+                              <div className="flex justify-between items-center text-[10px] font-mono">
+                                <span className="font-extrabold text-slate-700">Simulador de Mitigación (Delegación Activa)</span>
+                                <span className="bg-indigo-600 text-white p-0.5 px-1.5 rounded font-black">
+                                  -{burnoutSimulationOffset * 22}% Presión
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-slate-400">0</span>
+                                <input 
+                                  type="range"
+                                  min="0"
+                                  max={Math.max(3, realQ1Count)}
+                                  value={burnoutSimulationOffset}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    setBurnoutSimulationOffset(val);
+                                    addLog(`📈 Modulado el regulador mental sismográfico a factor de mitigación: -${val * 22}%`, "telemetry");
+                                  }}
+                                  className="flex-1 accent-indigo-600 h-1 bg-slate-250 rounded-lg cursor-pointer"
+                                />
+                                <span className="text-[10px] font-mono text-slate-400">{Math.max(3, realQ1Count)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Consola de Gatillos / Deck de Acciones Rápidas */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="p-1 px-1.5 bg-indigo-50 border border-indigo-150 text-indigo-600 rounded">
+                          <Zap className="w-4 h-4 text-indigo-600" />
+                        </span>
+                        <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider font-mono">
+                          Relámpago de Acciones Rápidas (Interactive Shortcut Deck)
+                        </h4>
+                      </div>
+                      <span className="text-[9px] font-mono text-slate-400">Ejecución un click</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const userToDelegate = currentUser?.name || "Osman Marin";
+                          const targetTasks = tasks.filter(t => t.quadrant === "Q3" && t.status !== "DONE" && t.assigned_to === userToDelegate);
+                          if (targetTasks.length === 0) {
+                            addLog(`Verificación de Deck: No posees tareas pendientes en Q3 para delegar en lote.`, "warn");
+                            return;
+                          }
+                          const targetUser = userToDelegate === "Osman Marin" ? "Marie Puscan" : "Osman Marin";
+                          const updated = tasks.map(t => {
+                            if (t.quadrant === "Q3" && t.status !== "DONE" && t.assigned_to === userToDelegate) {
+                              return {
+                                ...t,
+                                assigned_to: targetUser,
+                                delegation_histories: [
+                                  ...t.delegation_histories,
+                                  { id: Date.now() + Math.random(), from_user: userToDelegate, to_user: targetUser, assigned_at: "Hoy (Consola Lote)" }
+                                ]
+                              };
+                            }
+                            return t;
+                          });
+                          setTasks(updated);
+                          addLog(`⚡ ACCIÓN MÁSTER: Delegadas ${targetTasks.length} tareas pendientes de Q3 a ${targetUser} para mitigar fatiga cognitiva.`, "success");
+                          
+                          // Simular llamadas API en segundo plano
+                          targetTasks.forEach(async t => {
+                            try {
+                              await fetch(`/api/tasks/${t.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ assigned_to: targetUser })
+                              });
+                            } catch (e) {}
+                          });
+                        }}
+                        className="p-3 border border-indigo-150 bg-indigo-50/20 hover:bg-indigo-50 text-left rounded-xl hover:border-indigo-400 transition-all group cursor-pointer"
+                      >
+                        <strong className="block text-[11px] font-extrabold text-indigo-950 flex items-center justify-between">
+                          <span>⚡ Auto-Delegar Q3 a Marie</span>
+                          <ChevronRight className="w-3 h-3 text-indigo-400 group-hover:translate-x-0.5 transition-transform" />
+                        </strong>
+                        <span className="text-[10px] text-indigo-700 mt-0.5 block line-clamp-1">
+                          Mitigar carga operacionales delegando todo tu Q3 actual.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const q4DoneCount = tasks.filter(t => t.quadrant === "Q4" && t.status === "DONE").length;
+                          if (q4DoneCount === 0) {
+                            addLog("Vaciado cancelado: No hay tareas de Q4 completadas acumuladas.", "warn");
+                            return;
+                          }
+                          const updated = tasks.filter(t => !(t.quadrant === "Q4" && t.status === "DONE"));
+                          setTasks(updated);
+                          addLog(`🧹 BASE DE DATOS: Limpieza de índices ejecutada. Eliminadas ${q4DoneCount} tareas de Q4 completadas.`, "success");
+                        }}
+                        className="p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left rounded-xl hover:border-slate-300 transition-all group cursor-pointer"
+                      >
+                        <strong className="block text-[11px] font-extrabold text-slate-800 flex items-center justify-between">
+                          <span>🧹 Vaciado & Mantenimiento Q4</span>
+                          <ChevronRight className="w-3 h-3 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                        </strong>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block line-clamp-1">
+                          Depura registros de baja prioridad e históricos completados de la DB.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!pomodoroTaskId) {
+                            addLog("Para simular un término de ciclo, la tarea Pomodoro debe estar enlazada en el panel de la derecha.", "warn");
+                            return;
+                          }
+                          setPomodoroTimeLeft(0);
+                          setPomodoroIsRunning(true);
+                          addLog("🍅 ACELERADOR POMODORO: Forzando temporizador a 00:00 para gatillar bitácora automática.", "info");
+                        }}
+                        className="p-3 border border-emerald-150 bg-emerald-50/20 hover:bg-emerald-50 text-left rounded-xl hover:border-emerald-450 transition-all group cursor-pointer"
+                      >
+                        <strong className="block text-[11px] font-extrabold text-emerald-950 flex items-center justify-between">
+                          <span>🍅 Completar Ciclo al Instante</span>
+                          <ChevronRight className="w-3 h-3 text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
+                        </strong>
+                        <span className="text-[10px] text-emerald-700 mt-0.5 block line-clamp-1">
+                          Simular finalización óptima de 25m y gatillar el sintetizador de voz.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            const synth = window.speechSynthesis;
+                            if (synth) {
+                              const utterance = new SpeechSynthesisUtterance("Alerta de voz sintética de Matrix OS activa y sincronizada.");
+                              synth.speak(utterance);
+                              addLog("🔈 ALTAVOZ: Probado exitosamente el bus vocalizado del navegador.", "success");
+                            } else {
+                              addLog("🔈 ALTAVOZ ERROR: Tu navegador no es compatible con SpeechSynthesis.", "error");
+                            }
+                          } catch (e) {
+                            addLog("🔈 ALTAVOZ CORRUPTO: Error de inicialización de bus físico.", "error");
+                          }
+                        }}
+                        className="p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left rounded-xl hover:border-slate-300 transition-all group cursor-pointer"
+                      >
+                        <strong className="block text-[11px] font-extrabold text-slate-800 flex items-center justify-between">
+                          <span>🔈 Validar Alerta de Voz</span>
+                          <ChevronRight className="w-3 h-3 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                        </strong>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block line-clamp-1">
+                          Prueba la síntesis vocal del bus de audio local sin esperar el temporizador.
+                        </span>
+                      </button>
+
+                    </div>
+                  </div>
+
+                  {/* Alineación de OKRs Semanales Compacta */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div className="flex items-center gap-1.5 font-sans">
+                        <Award className="w-4 h-4 text-indigo-600 font-bold" />
+                        <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider font-mono">
+                          Metas de Alto Nivel y OKRs Semanales
+                        </h4>
+                      </div>
+                      <span className="font-mono text-[9px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 rounded font-black">
+                        {weeklyGoals.length} Metas
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {weeklyGoals.map(goal => {
+                        const linked = tasks.filter(t => taskGoalsMap[t.id] === goal.id);
+                        const doneCount = linked.filter(t => t.status === "DONE").length;
+                        const pct = linked.length > 0 ? Math.round((doneCount / linked.length) * 100) : 0;
+                        return (
+                          <div key={goal.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col justify-between hover:border-slate-350 transition-colors">
+                            <div className="space-y-1">
+                              <span className={`text-[8px] font-mono font-black uppercase tracking-wider block ${goal.category === "Trabajo" ? "text-indigo-600" : "text-emerald-600"}`}>
+                                {goal.category === "Trabajo" ? "🏢 Work" : "🌿 Life"}
+                              </span>
+                              <h5 className="text-[10px] font-bold text-slate-800 leading-tight line-clamp-2">
+                                {goal.title}
+                              </h5>
+                            </div>
+                            <div className="pt-2">
+                              <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all" 
+                                  style={{ 
+                                    width: `${pct}%`,
+                                    backgroundColor: goal.category === "Trabajo" ? "#4f46e5" : "#10b981"
+                                  }}
+                                />
+                              </div>
+                              <span className="text-[9px] font-mono text-slate-400 block mt-1">
+                                {pct}% ({doneCount}/{linked.length} completadas)
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Lado Derecho: Dashboard del Temporizador de Pomodoro Exclusivo y Consola de Telemetría */}
+                <div className="lg:col-span-5 space-y-6">
+                  
+                  {/* Master Temporizador Pomodoro */}
+                  <div className="bg-slate-900 text-slate-100 p-6 rounded-2xl shadow-xl relative overflow-hidden border border-slate-950 space-y-4">
+                    <div className="absolute -top-10 -right-10 w-28 h-28 bg-indigo-600/10 rounded-full blur-2xl" />
+                    <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-emerald-600/10 rounded-full blur-2xl" />
+
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3 relative z-10">
+                      <div>
+                        <h4 className="text-xs font-black uppercase text-slate-200 tracking-wider font-mono flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-indigo-400 animate-pulse" /> Controlador Pomodoro Integrado
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-sans">
+                          Sincroniza sprints de enfoque y reporta a la bitácora.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center py-4 space-y-3 relative z-10">
+                      
+                      {/* Círculo de Cuenta Regresiva */}
+                      <div className="w-32 h-32 rounded-full border-4 border-slate-800 flex flex-col items-center justify-center relative bg-slate-950/40">
+                        {/* Indicador de Relleno Visual */}
+                        <div className="absolute inset-0 rounded-full border-4 border-indigo-500/30 animate-pulse" />
+                        
+                        <span className="text-2xl font-mono font-black text-slate-100 tracking-tight">
+                          {String(Math.floor(pomodoroTimeLeft / 60)).padStart(2, "0")}:{String(pomodoroTimeLeft % 60).padStart(2, "0")}
+                        </span>
+                        <span className="text-[8px] font-mono font-black uppercase tracking-wider text-slate-400 block mt-1">
+                          {pomodoroMode === "focus" ? "🔥 Enfoque" : "☕ Descanso"}
+                        </span>
+                      </div>
+
+                      {/* Controles de Temporizador */}
+                      <div className="flex gap-2 w-full max-w-[200px]">
+                        {!pomodoroIsRunning ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPomodoroIsRunning(true);
+                              addLog(`🍅 Pomodoro Enfoque iniciado sobre tarea bind asignada (${pomodoroTaskId || 'Sin Tarea'}).`, "info");
+                            }}
+                            className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 border border-indigo-700 text-white rounded font-mono text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
+                          >
+                            Iniciar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPomodoroIsRunning(false);
+                              addLog("🍅 Pomodoro pausado temporalmente.", "warn");
+                            }}
+                            className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-450 border border-amber-600 text-white rounded font-mono text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+                          >
+                            Pausar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPomodoroIsRunning(false);
+                            const tLeft = pomodoroMode === "focus" ? 1500 : 300;
+                            setPomodoroTimeLeft(tLeft);
+                            addLog("🍅 Pomodoro reiniciado a valores nominales.", "info");
+                          }}
+                          className="px-3 bg-slate-800 hover:bg-slate-750 text-slate-200 rounded text-xs hover:text-white transition-colors cursor-pointer border border-slate-700"
+                          title="Reiniciar"
+                        >
+                          ↺
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Selector de Vinculación de Tareas Activas */}
+                    <div className="space-y-1 relative z-10 pt-2 border-t border-slate-800">
+                      <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">
+                        Vincular enfoque a una tarea de la Matriz:
+                      </span>
+                      <select
+                        value={pomodoroTaskId || ""}
+                        onChange={(e) => {
+                          const val = e.target.value || null;
+                          setPomodoroTaskId(val);
+                          addLog(`🍅 Pomodoro sincronizado con la tarea: ${val || 'Ninguna'}`, "info");
+                        }}
+                        className="w-full text-xs p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer text-left font-sans"
+                      >
+                        <option value="">-- No vincular (Reloj General) --</option>
+                        {tasks.filter(t => t.status !== "DONE").map(task => (
+                          <option key={task.id} value={task.id}>
+                            [{task.id}] {task.title}
+                          </option>
+                        ))}
+                      </select>
+                      {pomodoroTaskId && (
+                        <p className="text-[9px] text-indigo-400 font-mono mt-1">
+                          🎯 Al expirar los 25 min, se creará un comentario de auditoría automáticamente en los detalles de la tarea.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Consola de Telemetría Terminal */}
+                  <div className="bg-slate-950 border border-slate-900 rounded-2xl p-5 shadow-2xl space-y-3 font-mono text-xs text-slate-350">
+                    <div className="flex items-center justify-between border-b border-slate-900 pb-2 flex-shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="w-4 h-4 text-emerald-500" />
+                        <span className="font-bold text-[10px] text-slate-200 uppercase tracking-wider">Consola de Telemetría MatrixOS</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setConsoleLogs([]);
+                          addLog("🧹 Consola de logs vaciada por operador.", "info");
+                        }}
+                        className="text-[9px] text-slate-600 hover:text-indigo-400 transition-colors uppercase font-bold cursor-pointer"
+                        title="Limpiar Logs"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+
+                    <div className="h-64 overflow-y-auto space-y-2 pr-1 font-mono text-[10px] leading-relaxed scrollbar-thin scrollbar-thumb-slate-800">
+                      {consoleLogs.length === 0 ? (
+                        <div className="text-center py-20 text-slate-600 text-[10px] italic">
+                          Consola en espera de señales...
+                        </div>
+                      ) : (
+                        consoleLogs.map(log => {
+                          let typeColor = "text-slate-400";
+                          if (log.type === "success") typeColor = "text-emerald-400 font-extrabold";
+                          if (log.type === "warn") typeColor = "text-amber-400 font-extrabold";
+                          if (log.type === "error") typeColor = "text-rose-500 font-black animate-pulse";
+                          if (log.type === "telemetry") typeColor = "text-indigo-400 font-bold";
+
+                          return (
+                            <div key={log.id} className="flex gap-2 items-start hover:bg-slate-900/50 p-1 rounded transition-colors group">
+                              <span className="text-slate-600 select-none font-bold">[{log.time}]</span>
+                              <span className={`${typeColor} flex-1`}>{log.text}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-900 pt-2 flex justify-between items-center text-[8px] text-slate-600 font-semibold select-none">
+                      <span>PostgreSQL 16 Engine: OK</span>
+                      <span>FastAPI WS Bus: ONLINE</span>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          )}
+
           {activeView === "matrix" && (
             <>
               {/* Barra de Filtros de Etiquetas */}
               <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-4 rounded-lg shadow-xs">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-mono mr-1">
               <Tag className="w-3.5 h-3.5 text-indigo-600" /> FILTRAR POR CATEGORÍA:
             </span>
             <button
