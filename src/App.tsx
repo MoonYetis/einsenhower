@@ -2852,6 +2852,10 @@ services:
                   const isSelected = selectedCalendarDay === day;
                   const isCurrentNow = new Date().getDate() === day && new Date().getMonth() === calendarMonth && new Date().getFullYear() === calendarYear;
                   const matchingTasks = filteredTasks.filter(t => matchTaskWithDate(t.due_date, calendarYear, calendarMonth, day));
+                  const matchingObligations = financeTransactions.filter(t => 
+                    t.type === "OBLIGACIONES" && 
+                    matchTaskWithDate(t.due_date, calendarYear, calendarMonth, day)
+                  );
 
                   return (
                     <div
@@ -2876,21 +2880,28 @@ services:
                         }`}>
                           {day}
                         </span>
-                        {matchingTasks.length > 0 && (
-                          <span className="text-[8px] font-mono bg-indigo-100 text-indigo-700 leading-none px-1 rounded-full font-black">
-                            {matchingTasks.length}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-0.5">
+                          {matchingTasks.length > 0 && (
+                            <span className="text-[8px] font-mono bg-indigo-105 text-indigo-700 leading-none px-1 py-0.5 rounded font-black" title={`${matchingTasks.length} Tareas`}>
+                              {matchingTasks.length}T
+                            </span>
+                          )}
+                          {matchingObligations.length > 0 && (
+                            <span className="text-[8px] font-mono bg-amber-105 text-amber-800 leading-none px-1 py-0.5 rounded font-black" title={`${matchingObligations.length} Obligaciones`}>
+                              {matchingObligations.length}$
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Lista de Micro Tareas con Código de Color */}
+                      {/* Lista de Micro Tareas y Obligaciones con Código de Color */}
                       <div className="space-y-1 mt-1 flex-1 overflow-y-auto max-h-[3.2rem] scrollbar-none">
                         {matchingTasks.map(task => {
                           const isTaskActive = selectedTaskId === task.id;
                           const bgClass = 
-                            task.quadrant === "Q1" ? "bg-red-50 text-red-700 border-red-200" :
-                            task.quadrant === "Q2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                            task.quadrant === "Q3" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            task.quadrant === "Q1" ? "bg-red-55 text-red-700 border-red-200" :
+                            task.quadrant === "Q2" ? "bg-indigo-55 text-indigo-700 border-indigo-200" :
+                            task.quadrant === "Q3" ? "bg-amber-55 text-amber-700 border-amber-200" :
                             "bg-slate-150 text-slate-700 border-slate-250";
 
                           const dotClass = 
@@ -2917,6 +2928,33 @@ services:
                             </button>
                           );
                         })}
+
+                        {matchingObligations.map(ob => {
+                          const isPending = ob.status === "PENDIENTE";
+                          const bgClass = isPending 
+                            ? "bg-amber-50 text-amber-800 border-amber-200/70" 
+                            : "bg-emerald-50 text-emerald-800 border-emerald-200/75 line-through opacity-75";
+
+                          const dotClass = isPending ? "bg-amber-500" : "bg-emerald-550";
+
+                          return (
+                            <div
+                              key={ob.id}
+                              title={`[Obligación - ${ob.category}] ${ob.title} ($${ob.amount}) - ${ob.status}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCalendarDay(day);
+                              }}
+                              className={`w-full text-left text-[8px] font-bold p-1 py-0.5 rounded border leading-tight truncate flex items-center justify-between gap-1 select-none transition-all cursor-pointer ${bgClass}`}
+                            >
+                              <div className="flex items-center gap-0.5 truncate max-w-[70%]">
+                                <span className={`w-1 h-1 rounded-full shrink-0 ${dotClass}`} />
+                                <span className="truncate">{ob.title}</span>
+                              </div>
+                              <span className="font-mono text-[7px] shrink-0 font-black">${ob.amount}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -2926,45 +2964,167 @@ services:
 
             {/* Panel de Acciones Rápidas del Día Seleccionado */}
             {selectedCalendarDay !== null ? (
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans shadow-xxs">
-                <div className="flex items-center gap-2">
-                  <div className="p-1 px-2.5 bg-slate-900 text-white font-mono text-xs font-bold rounded">
-                    {selectedCalendarDay}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4 font-sans shadow-xxs">
+                {/* Cabecera del Panel */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 px-3 bg-indigo-600 text-white font-mono text-sm font-black rounded-lg shadow-sm">
+                      {selectedCalendarDay}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-black tracking-widest block uppercase font-mono">Planificador Diario</span>
+                      <span className="text-xs font-black text-slate-900">
+                        {selectedCalendarDay} de {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][calendarMonth]} de {calendarYear}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-black tracking-widest block uppercase font-mono">Día Seleccionado:</span>
-                    <span className="text-xs font-bold text-slate-900">
-                      {selectedCalendarDay} de {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][calendarMonth]} de {calendarYear}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Boton para programar tarea actualmente cargada en el panel de detalle */}
-                  {currentTask && currentTask.id && currentTask.title && !currentTask.title.startsWith("Cargando") ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Botón para asignar tarea */}
+                    {currentTask && currentTask.id && currentTask.title && !currentTask.title.startsWith("Cargando") ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
+                          handleUpdateDueDate(currentTask.id, dateString);
+                        }}
+                        className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer select-none shadow-3xs whitespace-nowrap"
+                      >
+                        📅 Asignar "{currentTask.id}" a este día
+                      </button>
+                    ) : null}
+
                     <button
                       type="button"
                       onClick={() => {
                         const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
-                        handleUpdateDueDate(currentTask.id, dateString);
+                        handleOpenAddTaskModal(dateString);
                       }}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] font-sans font-black uppercase tracking-wider transition-all cursor-pointer select-none"
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer select-none whitespace-nowrap shadow-sm"
                     >
-                      📅 Asignar a {currentTask.id}
+                      ➕ Crear Tarea Aquí
                     </button>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(selectedCalendarDay).padStart(2, "0")}`;
-                      handleOpenAddTaskModal(dateString);
-                    }}
-                    className="px-3 py-1.5 bg-slate-900 border border-slate-950 text-white hover:bg-slate-800 rounded-md text-[10px] font-sans font-black uppercase tracking-wider transition-all cursor-pointer select-none whitespace-nowrap"
-                  >
-                    ➕ Crear Tarea Aquí
-                  </button>
+                  </div>
                 </div>
+
+                {/* Grid con Tareas y Obligaciones del Día */}
+                {(() => {
+                  const dayTasks = filteredTasks.filter(t => matchTaskWithDate(t.due_date, calendarYear, calendarMonth, selectedCalendarDay));
+                  const dayObligations = financeTransactions.filter(t => 
+                    t.type === "OBLIGACIONES" && 
+                    matchTaskWithDate(t.due_date, calendarYear, calendarMonth, selectedCalendarDay)
+                  );
+
+                  const hasItems = dayTasks.length > 0 || dayObligations.length > 0;
+
+                  if (!hasItems) {
+                    return (
+                      <div className="text-center py-6 text-slate-400 text-xs font-mono border border-dashed border-slate-200 rounded-lg">
+                        ☕ No hay tareas planificadas ni obligaciones de pago con vencimiento para este día.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Columna de Tareas de la Matriz */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">
+                          📋 Actividades Planificadas ({dayTasks.length})
+                        </span>
+                        {dayTasks.length === 0 ? (
+                          <p className="text-[10px] text-slate-405 italic text-left">Sin tareas para esta fecha.</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {dayTasks.map(task => {
+                              const qLabel = 
+                                task.quadrant === "Q1" ? "Urgente & Importante" :
+                                task.quadrant === "Q2" ? "Importante, No Urgente" :
+                                task.quadrant === "Q3" ? "Urgente, No Importante" : "Eliminar de la lista";
+                              const qBadgeBg = 
+                                task.quadrant === "Q1" ? "bg-red-100 text-red-800" :
+                                task.quadrant === "Q2" ? "bg-indigo-100 text-indigo-800" :
+                                task.quadrant === "Q3" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-800";
+                              
+                              return (
+                                <div 
+                                  key={task.id}
+                                  onClick={() => {
+                                    setSelectedTaskId(task.id);
+                                    setIsMobileDetailsOpen(true);
+                                  }}
+                                  className="p-2.5 bg-white border border-slate-200 hover:border-slate-300 rounded-lg flex items-center justify-between gap-3 text-left cursor-pointer transition-all shadow-3xs"
+                                >
+                                  <div className="truncate">
+                                    <span className="text-[10px] font-mono text-slate-400 block font-bold">{task.id}</span>
+                                    <span className="text-xs font-bold text-slate-800 block truncate">{task.title}</span>
+                                  </div>
+                                  <span className={`text-[8.5px] font-mono font-black px-1.5 py-0.5 rounded uppercase tracking-tight shrink-0 ${qBadgeBg}`} title={qLabel}>
+                                    {task.quadrant}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Columna de Obligaciones Financieras Colectivas */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-mono font-black text-amber-600 block uppercase tracking-wider flex items-center gap-1 text-left">
+                          💰 Vencimiento de Obligaciones ({dayObligations.length})
+                        </span>
+                        {dayObligations.length === 0 ? (
+                          <p className="text-[10px] text-slate-405 italic text-left">Ningún pago vence hoy.</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {dayObligations.map(ob => {
+                              const isPaid = ob.status === "PAGADO";
+                              return (
+                                <div 
+                                  key={ob.id}
+                                  className="p-2.5 bg-white border border-slate-200 rounded-lg flex items-center justify-between gap-3 shadow-3xs"
+                                >
+                                  <div className="truncate text-left">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[9px] font-mono bg-slate-100 text-slate-600 border border-slate-200 px-1 py-0.2 rounded uppercase font-black">
+                                        {ob.category}
+                                      </span>
+                                      {ob.recurrence_parent_id && (
+                                        <span className="text-[8.5px] font-mono text-indigo-650 font-extrabold" title="Recurrente mensual">
+                                          🔄 Recurrente
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className={`text-xs font-bold block truncate mt-0.5 ${isPaid ? "line-through text-slate-400" : "text-slate-800"}`}>
+                                      {ob.title}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="font-mono text-xs font-black text-slate-900">${ob.amount}</span>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        await handleToggleObligationStatus(ob.id, ob.status || "PENDIENTE", ob.title);
+                                      }}
+                                      className={`px-2 py-1 rounded font-mono text-[9px] font-black uppercase tracking-wide cursor-pointer select-none transition-all ${
+                                        isPaid 
+                                          ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-205" 
+                                          : "bg-amber-100 text-amber-800 hover:bg-amber-150 border border-amber-300"
+                                      }`}
+                                    >
+                                      {isPaid ? "✅ PAGADO" : "⏳ PENDIENTE"}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div className="text-center p-3.5 border border-dashed border-slate-200 text-slate-400 text-xs rounded-lg font-sans">
