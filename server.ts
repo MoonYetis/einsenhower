@@ -374,6 +374,94 @@ app.post("/api/tasks/:id/attachments", upload.single("file"), (req, res) => {
   res.status(201).json(newAttachment);
 });
 
+// === SISTEMA DE TRAZABILIDAD E HISTORIAL DE CAMBIOS COLECTIVO ===
+const HISTORY_FILE = path.join(process.cwd(), "history.json");
+
+interface HistoryEntry {
+  id: string;
+  user: string;
+  action: string;
+  details: string;
+  timestamp: string;
+}
+
+const defaultHistory: HistoryEntry[] = [
+  {
+    id: "h-1",
+    user: "Osman Marin",
+    action: "Creación de Obligación",
+    details: "Registró la obligación de pago 'Impuesto Anual de Registro de Hosting' por $350 para la cuenta Vinannet.",
+    timestamp: "2026-05-26T14:30:00.000Z"
+  },
+  {
+    id: "h-2",
+    user: "Marie Puscan",
+    action: "Ajuste de Cuenta",
+    details: "Actualizó el estado de 'Factura de Proveedor Textil' en Vinanmerch ($600) a PENDIENTE.",
+    timestamp: "2026-05-26T16:15:00.000Z"
+  },
+  {
+    id: "h-3",
+    user: "Osman Marin",
+    action: "Delegación de Tarea",
+    details: "Asignó la tarea '#492' ('Fallo Crítico: Mitigar Fuga en Middleware de Autenticación FastAPI') a Marie Puscan.",
+    timestamp: "2026-05-27T08:30:00.000Z"
+  }
+];
+
+function readHistory(): HistoryEntry[] {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const data = fs.readFileSync(HISTORY_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error leyendo archivo de historial:", error);
+  }
+  writeHistory(defaultHistory);
+  return defaultHistory;
+}
+
+function writeHistory(data: HistoryEntry[]): void {
+  try {
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error escribiendo archivo de historial:", error);
+  }
+}
+
+function appendToHistory(user: string, action: string, details: string): void {
+  const history = readHistory();
+  const newEntry: HistoryEntry = {
+    id: `h-${Math.floor(100000 + Math.random() * 900000)}`,
+    user: user || "Operador MatrixOS",
+    action,
+    details,
+    timestamp: new Date().toISOString()
+  };
+  history.unshift(newEntry);
+  writeHistory(history);
+}
+
+// Rutas de Historial
+app.get("/api/history", (req, res) => {
+  res.json(readHistory());
+});
+
+app.post("/api/history", (req, res) => {
+  const { user, action, details } = req.body;
+  if (!action || !details) {
+    return res.status(400).json({ error: "Faltan campos de trazabilidad (action, details)" });
+  }
+  appendToHistory(user, action, details);
+  res.status(201).json({ success: true, history: readHistory() });
+});
+
+app.delete("/api/history", (req, res) => {
+  writeHistory([]);
+  res.json({ message: "Historial de trazabilidad reiniciado correctamente" });
+});
+
 // === ENDPOINTS DE LA API DE FINANZAS (FINANCES.JSON STORAGE) ===
 
 const FINANCES_FILE = path.join(process.cwd(), "finances.json");

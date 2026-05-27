@@ -8,6 +8,7 @@ import {
   Database, 
   Layers, 
   FileText, 
+  History,
   Users, 
   CheckCircle, 
   ChevronRight,
@@ -273,8 +274,8 @@ export default function App() {
   // Estados de Sincronización y Respaldo Físico para celulares y sobremesa
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal, Finanzas Colectivas
-  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard" | "finances">("dashboard");
+  // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal, Finanzas Colectivas, Historial de Cambios
+  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard" | "finances" | "history">("dashboard");
   const [weeklyCommentary, setWeeklyCommentary] = useState<string>(() => {
     return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
   });
@@ -380,6 +381,7 @@ export default function App() {
       if (res.ok) {
         await reloadFinances();
         addLog(`💵 FINANZAS: Registrada nueva transacción ${newTxIsRecurrent ? "recurrrente" : ""} en [${selectedFinanceWorkspace}] - ${newTxTitle} ($${newTxAmount})`, "success");
+        addTeamHistoryEntry("Registro de Transacción", `Registró un ${newTxType.toLowerCase()} de $${newTxAmount} en [${selectedFinanceWorkspace}]: "${newTxTitle}".`);
         // Reset campos
         setNewTxTitle("");
         setNewTxDescription("");
@@ -402,6 +404,7 @@ export default function App() {
       if (res.ok) {
         await reloadFinances();
         addLog(`🗑️ FINANZAS: Eliminado - "${title}" ${deleteAllRecurrences ? "(toda la serie recurrente)" : "(este mes únicamente)"}`, "warn");
+        addTeamHistoryEntry("Eliminación de Transacción", `Eliminó la transacción "${title}" ($${financeTransactions.find(t => t.id === id)?.amount || ''}) de la cuenta [${financeTransactions.find(t => t.id === id)?.category || ''}].`);
         setRecDeletionModal(null);
       }
     } catch (err) {
@@ -436,6 +439,7 @@ export default function App() {
         const updated = await res.json();
         setFinanceTransactions(prev => prev.map(t => t.id === id ? updated : t));
         addLog(`⚙️ OBLIGACIÓN: ${title} marcada como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}`, "success");
+        addTeamHistoryEntry("Pago / Ajuste de Obligación", `Sincronizó estado de la obligación "${title}" ($${updated.amount}) en [${updated.category}] como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}.`);
       }
     } catch (err) {
       console.error(err);
@@ -456,6 +460,7 @@ export default function App() {
         const data = await res.json();
         setFinanceCategories(data.categories);
         addLog(`🏷️ CATEGORÍA FINANCIERA: Creada categoría personalizada - ${newCustomCategoryInput}`, "success");
+        addTeamHistoryEntry("Creación de Cuenta / Categoría", `Creada la cuenta/categoría personalizada '${newCustomCategoryInput}'.`);
         setNewCustomCategoryInput("");
         setShowAddCategoryForm(false);
         // Seleccionar automáticamente la nueva categoría en el dropdown
@@ -482,6 +487,7 @@ export default function App() {
         const data = await res.json();
         setFinanceCategories(data.categories);
         addLog(`🗑️ CATEGORÍA FINANCIERA: Eliminada la cuenta / categoría - ${catName}`, "warn");
+        addTeamHistoryEntry("Eliminación de Cuenta / Categoría", `Eliminó la cuenta/categoría '${catName}'.`);
         if (selectedFinanceWorkspace === catName) {
           setSelectedFinanceWorkspace(data.categories[0] || "General");
         }
@@ -511,6 +517,36 @@ export default function App() {
       { id: "log-" + Date.now() + Math.random(), time: timeStr, text, type },
       ...prev
     ].slice(0, 50));
+  };
+
+  // Historial de cambios compartidos para trazabilidad y transparencia
+  interface TeamHistoryEntry {
+    id: string;
+    user: string;
+    action: string;
+    details: string;
+    timestamp: string;
+  }
+  const [teamHistory, setTeamHistory] = useState<TeamHistoryEntry[]>([]);
+
+  const addTeamHistoryEntry = async (action: string, details: string) => {
+    try {
+      const res = await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: currentUser?.name || "Operador MatrixOS",
+          action,
+          details
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTeamHistory(data.history || []);
+      }
+    } catch (err) {
+      console.warn("Fallo registrando trazabilidad remota:", err);
+    }
   };
 
   // 1. Temporizador de Pomodoro e Incremento de Enfoque Sincronizado
@@ -738,8 +774,20 @@ export default function App() {
         console.warn("Fallo de API de finanzas, usando fallback en memoria: ", err);
       }
     };
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch("/api/history");
+        if (res.ok) {
+          const data = await res.json();
+          setTeamHistory(data);
+        }
+      } catch (err) {
+        console.warn("Fallo de API de historial, usando fallback:", err);
+      }
+    };
     fetchTasks();
     fetchFinances();
+    fetchHistory();
   }, []);
 
   // Estado para crear nuevas tareas interactivas directamente en el tablero
@@ -1068,6 +1116,7 @@ export default function App() {
         const createdTaskObj = await res.json();
         setTasks(prev => [createdTaskObj, ...prev]);
         setSelectedTaskId(createdTaskObj.id);
+        addTeamHistoryEntry("Creación de Tarea", `Creó la tarea '${createdTaskObj.id}' ("${newTitle}") asignada a ${newAssignee}.`);
       } else {
         throw new Error("Respuesta inválida");
       }
@@ -1098,6 +1147,7 @@ export default function App() {
       };
       setTasks(prev => [newTask, ...prev]);
       setSelectedTaskId(newTask.id);
+      addTeamHistoryEntry("Creación de Tarea (Local)", `Creó la tarea '${newTask.id}' ("${newTitle}") asignada a ${newAssignee}.`);
     }
 
     setShowAddTaskModal(false);
@@ -1194,6 +1244,7 @@ export default function App() {
           }
           return task;
         }));
+        addTeamHistoryEntry("Comentario / Log de Tarea", `Agregó un comentario en la tarea '${currentTask.id}': "${newNoteContent}"`);
       } else {
         throw new Error("Respuesta inválida de API");
       }
@@ -1223,6 +1274,7 @@ export default function App() {
 
   // Eliminar una tarea real en la base de datos
   const handleDeleteTaskSim = async (id: string) => {
+    const targetTask = tasks.find(t => t.id === id);
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "DELETE"
@@ -1235,6 +1287,7 @@ export default function App() {
         } else {
           setSelectedTaskId("");
         }
+        addTeamHistoryEntry("Eliminación de Tarea", `Eliminó la tarea '${id}' ("${targetTask?.title || "Sin título"}").`);
       }
     } catch (err) {
       console.warn("Fallo de API al eliminar, haciendo borrado en memoria:", err);
@@ -1250,6 +1303,7 @@ export default function App() {
 
   // Cambiar el estado o cuadrante de la tarea dinámicamente con la API Express
   const handleStatusChangeSim = async (id: string, newStatus: "TODO" | "IN_PROGRESS" | "DONE") => {
+    const targetTask = tasks.find(t => t.id === id);
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
@@ -1259,6 +1313,7 @@ export default function App() {
       if (res.ok) {
         const updatedTask = await res.json();
         setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
+        addTeamHistoryEntry("Actualización de Estado", `Cambió el estado de la tarea '${id}' ("${targetTask?.title || "Sin título"}") a ${newStatus === "DONE" ? "COMPLETADA ✔️" : newStatus}.`);
       } else {
         throw new Error("Fallo API status change");
       }
@@ -1275,6 +1330,7 @@ export default function App() {
 
   // Controlar la reasignación de colaboradores en tiempo real con la API Express
   const handleReassignSim = async (id: string, newAssignee: string) => {
+    const targetTask = tasks.find(t => t.id === id);
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
@@ -1284,6 +1340,7 @@ export default function App() {
       if (res.ok) {
         const updatedTask = await res.json();
         setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
+        addTeamHistoryEntry("Delegación de Tarea", `Delegó la tarea '${id}' ("${targetTask?.title || "Sin título"}") de ${targetTask?.assigned_to || "nadie"} a ${newAssignee}.`);
       } else {
         throw new Error("Fallo API reassign");
       }
@@ -1815,6 +1872,30 @@ services:
             >
               <TrendingUp className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
               Finanzas Colectivas
+            </button>
+            <button
+              onClick={() => {
+                setActiveView("history");
+                // Recargar historial al abrir para que esté sincronizado
+                const fetchHistory = async () => {
+                  try {
+                    const res = await fetch("/api/history");
+                    if (res.ok) {
+                      const data = await res.json();
+                      setTeamHistory(data);
+                    }
+                  } catch (err) {}
+                };
+                fetchHistory();
+              }}
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "history"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-indigo-500" />
+              Trazabilidad & Historial
             </button>
           </div>
 
@@ -4679,6 +4760,168 @@ services:
                 </div>
               )}
 
+            </div>
+          )}
+
+          {activeView === "history" && (
+            <div className="space-y-6 animate-fade-in font-sans">
+              
+              {/* Encabezado del Historial de Trazabilidad */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-mono text-xs font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                    AUDITORÍA EXCEPCIONAL DE EQUIPO
+                  </h3>
+                  <h4 className="font-black text-lg text-slate-900 tracking-tight mt-1 font-sans">
+                    Historial de Trazabilidad y Transparencia
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-xl leading-relaxed mt-1">
+                    Operaciones y modificaciones registradas de forma transaccional por los colaboradores <b>Osman Marin</b> y <b>Marie Puscan</b> para mantener sincronismo absoluto.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/history");
+                        if (res.ok) {
+                          const data = await res.json();
+                          setTeamHistory(data);
+                          addLog("🔄 Historial de trazabilidad compartido actualizado manualmente.", "info");
+                        }
+                      } catch (err) {}
+                    }}
+                    className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-mono text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    🔄 Refrescar Registro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm("¿Está seguro de querer borrar el historial compartido de trazabilidad? Esto afectará a todo el equipo.")) {
+                        try {
+                          const res = await fetch("/api/history", { method: "DELETE" });
+                          if (res.ok) {
+                            setTeamHistory([]);
+                            addLog("🧹 Historial de trazabilidad global reiniciado por operador.", "warn");
+                          }
+                        } catch (err) {}
+                      }
+                    }}
+                    className="px-3.5 py-2 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-700 font-mono text-xs font-bold rounded-lg transition-all cursor-pointer shadow-2xs"
+                  >
+                    🗑️ Limpiar Todo
+                  </button>
+                </div>
+              </div>
+
+              {/* Tarjetas de Resumen de Trazabilidad */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3.5">
+                  <span className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-mono text-sm font-extrabold border border-slate-200">
+                    OM
+                  </span>
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Último de Osman</span>
+                    <span className="text-xs font-black text-slate-800 block truncate max-w-[150px]">
+                      {teamHistory.find(h => h.user === "Osman Marin")?.action || "Sin acciones aún"}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3.5">
+                  <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-mono text-sm font-extrabold border border-emerald-200">
+                    MP
+                  </span>
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Último de Marie</span>
+                    <span className="text-xs font-black text-slate-800 block truncate max-w-[150px]">
+                      {teamHistory.find(h => h.user === "Marie Puscan")?.action || "Sin acciones aún"}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-750 flex items-center justify-center font-mono text-sm font-extrabold border border-indigo-200 shrink-0">
+                    {teamHistory.length}
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Total Transacciones</span>
+                    <span className="text-xs font-black text-slate-850 block">
+                      Registros consolidados
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Listado en Formato de Bitácora / Timeline */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-2 font-mono pb-2 border-b border-slate-150">
+                  <History className="w-4 h-4 text-indigo-600 animate-pulse" /> Bitácora de Modificaciones e Historial de Sincronismo
+                </h4>
+
+                {teamHistory.length === 0 ? (
+                  <div className="text-center py-24 text-slate-450 text-sm font-mono border border-dashed border-slate-200 rounded-xl space-y-2">
+                    <div>📭 Registro vacío o borrado.</div>
+                    <p className="text-xs text-slate-400">Las modificaciones que hagáis aparecerán aquí con trazabilidad completa.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {teamHistory.slice().reverse().map((entry) => {
+                      const isOsman = entry.user === "Osman Marin";
+                      const isMarie = entry.user === "Marie Puscan";
+
+                      // Color dinámico de badge por tipo de acción
+                      let badgeStyle = "bg-slate-100 border-slate-220 text-slate-700";
+                      if (entry.action.includes("Tarea")) badgeStyle = "bg-indigo-50 border-indigo-200 text-indigo-700";
+                      if (entry.action.includes("Transacción")) badgeStyle = "bg-emerald-50 border-emerald-200 text-emerald-700";
+                      if (entry.action.includes("Cuenta") || entry.action.includes("Categoría")) badgeStyle = "bg-amber-50 border-amber-200 text-amber-700";
+                      if (entry.action.includes("Eliminación")) badgeStyle = "bg-rose-50 border-rose-250 text-rose-700";
+
+                      return (
+                        <div 
+                          key={entry.id} 
+                          className="p-3.5 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 rounded-xl flex gap-3.5 items-start text-left transition-all"
+                        >
+                          {/* Avatar */}
+                          <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center font-mono text-[11px] font-black uppercase shrink-0 select-none border whitespace-nowrap shadow-xxs ${
+                            isOsman ? "bg-indigo-650 border-indigo-700 text-white" :
+                            isMarie ? "bg-emerald-500 border-emerald-600 text-white" :
+                            "bg-slate-800 border-slate-900 text-slate-100"
+                          }`}>
+                            {isOsman ? "OM" : isMarie ? "MP" : "OS"}
+                          </div>
+
+                          {/* Contenido del Log */}
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between items-start gap-2 flex-wrap sm:flex-nowrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] font-extrabold text-slate-800">{entry.user}</span>
+                                <span className={`text-[8.5px] font-mono font-black border uppercase px-1.5 py-0.2 rounded ${badgeStyle}`}>
+                                  {entry.action}
+                                </span>
+                              </div>
+                              <span className="text-[9.5px] font-mono font-medium text-slate-450 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded shrink-0">
+                                {new Date(entry.timestamp).toLocaleDateString("es-ES", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit"
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                              {entry.details}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
