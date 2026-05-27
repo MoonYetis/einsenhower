@@ -380,8 +380,8 @@ export default function App() {
       });
       if (res.ok) {
         await reloadFinances();
-        addLog(`💵 FINANZAS: Registrada nueva transacción ${newTxIsRecurrent ? "recurrrente" : ""} en [${selectedFinanceWorkspace}] - ${newTxTitle} ($${newTxAmount})`, "success");
-        addTeamHistoryEntry("Registro de Transacción", `Registró un ${newTxType.toLowerCase()} de $${newTxAmount} en [${selectedFinanceWorkspace}]: "${newTxTitle}".`);
+        addLog(`💵 FINANZAS: Registrada nueva transacción ${newTxIsRecurrent ? "recurrrente" : ""} en [${selectedFinanceWorkspace}] - ${newTxTitle} (S/ ${newTxAmount})`, "success");
+        addTeamHistoryEntry("Registro de Transacción", `Registró un ${newTxType.toLowerCase()} de S/ ${newTxAmount} en [${selectedFinanceWorkspace}]: "${newTxTitle}".`);
         // Reset campos
         setNewTxTitle("");
         setNewTxDescription("");
@@ -404,7 +404,7 @@ export default function App() {
       if (res.ok) {
         await reloadFinances();
         addLog(`🗑️ FINANZAS: Eliminado - "${title}" ${deleteAllRecurrences ? "(toda la serie recurrente)" : "(este mes únicamente)"}`, "warn");
-        addTeamHistoryEntry("Eliminación de Transacción", `Eliminó la transacción "${title}" ($${financeTransactions.find(t => t.id === id)?.amount || ''}) de la cuenta [${financeTransactions.find(t => t.id === id)?.category || ''}].`);
+        addTeamHistoryEntry("Eliminación de Transacción", `Eliminó la transacción "${title}" (S/ ${financeTransactions.find(t => t.id === id)?.amount || ''}) de la cuenta [${financeTransactions.find(t => t.id === id)?.category || ''}].`);
         setRecDeletionModal(null);
       }
     } catch (err) {
@@ -439,7 +439,7 @@ export default function App() {
         const updated = await res.json();
         setFinanceTransactions(prev => prev.map(t => t.id === id ? updated : t));
         addLog(`⚙️ OBLIGACIÓN: ${title} marcada como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}`, "success");
-        addTeamHistoryEntry("Pago / Ajuste de Obligación", `Sincronizó estado de la obligación "${title}" ($${updated.amount}) en [${updated.category}] como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}.`);
+        addTeamHistoryEntry("Pago / Ajuste de Obligación", `Sincronizó estado de la obligación "${title}" (S/ ${updated.amount}) en [${updated.category}] como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}.`);
       }
     } catch (err) {
       console.error(err);
@@ -3220,7 +3220,7 @@ services:
                           return (
                             <div
                               key={ob.id}
-                              title={`[Obligación - ${ob.category}] ${ob.title} ($${ob.amount}) - ${ob.status}`}
+                              title={`[Obligación - ${ob.category}] ${ob.title} (S/ ${ob.amount}) - ${ob.status}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedCalendarDay(day);
@@ -3231,7 +3231,7 @@ services:
                                 <span className={`w-1 h-1 rounded-full shrink-0 ${dotClass}`} />
                                 <span className="truncate">{ob.title}</span>
                               </div>
-                              <span className="font-mono text-[7px] shrink-0 font-black">${ob.amount}</span>
+                              <span className="font-mono text-[7px] shrink-0 font-black">S/ {ob.amount}</span>
                             </div>
                           );
                         })}
@@ -4126,7 +4126,7 @@ services:
                         <div className="mt-2.5">
                           <span className="text-xs font-extrabold uppercase tracking-tight block truncate max-w-[130px]">{cat}</span>
                           <span className={`text-[10px] font-mono font-bold block mt-0.5 ${isActive ? "text-white" : catNet >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                            Saldo: ${catNet.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            Saldo: S/ {catNet.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             {catOblgPending > 0 && (
                               <span className={`ml-1 text-[8.5px] font-black ${isActive ? "text-amber-200" : "text-amber-600 bg-amber-50 px-1 rounded-full text-[7.5px]"}`} title={`${catOblgPending} pendiente`}>
                                 (⏳)
@@ -4353,7 +4353,7 @@ services:
                       </div>
                       <div className="mt-2.5">
                         <span className="text-xl font-black text-slate-900 tracking-tight block">
-                          ${totalIncomes.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          S/ {totalIncomes.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[10px] text-slate-400 mt-1 font-mono">
                           <span>Entradas únicamente cargadas a la cuenta.</span>
@@ -4373,7 +4373,7 @@ services:
                       </div>
                       <div className="mt-2.5">
                         <span className="text-xl font-black text-slate-900 tracking-tight block">
-                          ${totalExpenses.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          S/ {totalExpenses.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[10px] text-slate-400 mt-1 font-mono">
                           <span>Excluye compromisos fijos pendientes.</span>
@@ -4393,14 +4393,14 @@ services:
                       </div>
                       <div className="mt-2.5">
                         <span className="text-xl font-black text-slate-900 tracking-tight block">
-                          ${(totalObligationsPending + totalObligationsPaid).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          S/ {(totalObligationsPending + totalObligationsPaid).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[9px] text-slate-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px]">
                           <span className="text-amber-700 bg-amber-50 px-1.5 rounded font-extrabold">
-                            Pendiente: ${totalObligationsPending}
+                            Pendiente: S/ {totalObligationsPending}
                           </span>
                           <span className="text-emerald-700 bg-emerald-50 px-1.5 rounded font-extrabold">
-                            Saldado: ${totalObligationsPaid}
+                            Saldado: S/ {totalObligationsPaid}
                           </span>
                         </div>
                       </div>
@@ -4422,7 +4422,7 @@ services:
                       </div>
                       <div className="mt-2.5">
                         <span className={`text-xl font-black tracking-tight block ${netBalance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                          ${netBalance.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          S/ {netBalance.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[9px] text-slate-400 mt-1 font-mono">
                           <span>Balance solo de la cuenta {selectedFinanceWorkspace}.</span>
@@ -4481,7 +4481,7 @@ services:
 
                           <div>
                             <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
-                              monto en USD ($):
+                              monto en Soles (S/):
                             </label>
                             <input
                               type="number"
@@ -4734,23 +4734,23 @@ services:
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[9px] font-mono">
                             <div className="border border-emerald-100 p-1 rounded-md text-center bg-emerald-50/10">
                               <span className="text-slate-400 block tracking-tight font-bold">🏡 FAMILIA</span>
-                              <span className="font-extrabold text-emerald-700 block mt-0.5">${familiarSpent}</span>
+                              <span className="font-extrabold text-emerald-700 block mt-0.5">S/ {familiarSpent}</span>
                             </div>
                             <div className="border border-indigo-100 p-1 rounded-md text-center bg-indigo-50/10">
                               <span className="text-slate-400 block tracking-tight font-bold">🌐 VINANNET</span>
-                              <span className="font-extrabold text-indigo-700 block mt-0.5">${vinannetSpent}</span>
+                              <span className="font-extrabold text-indigo-700 block mt-0.5">S/ {vinannetSpent}</span>
                             </div>
                             <div className="border border-purple-100 p-1 rounded-md text-center bg-purple-50/10">
                               <span className="text-slate-400 block tracking-tight font-bold">👕 MERCH</span>
-                              <span className="font-extrabold text-purple-700 block mt-0.5">${vinanmerchSpent}</span>
+                              <span className="font-extrabold text-purple-700 block mt-0.5">S/ {vinanmerchSpent}</span>
                             </div>
                             <div className="border border-rose-100 p-1 rounded-md text-center bg-rose-50/10">
                               <span className="text-slate-400 block tracking-tight font-bold">🔑 AIRBNB</span>
-                              <span className="font-extrabold text-rose-700 block mt-0.5">${airbnbSpent}</span>
+                              <span className="font-extrabold text-rose-700 block mt-0.5">S/ {airbnbSpent}</span>
                             </div>
                             <div className="border border-slate-200 p-1 rounded-md text-center bg-slate-50/10">
                               <span className="text-slate-400 block tracking-tight font-bold">💼 OTRXS</span>
-                              <span className="font-extrabold text-slate-700 block mt-0.5">${customSpent}</span>
+                              <span className="font-extrabold text-slate-700 block mt-0.5">S/ {customSpent}</span>
                             </div>
                           </div>
                         </div>
@@ -4856,7 +4856,7 @@ services:
                                       ? "text-emerald-600" 
                                       : "text-slate-800"
                                   }`}>
-                                    {isIncome ? "+ " : "- "}${tx.amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {isIncome ? "+ " : "- "}S/ {tx.amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                 </div>
 

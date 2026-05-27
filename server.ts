@@ -390,14 +390,14 @@ const defaultHistory: HistoryEntry[] = [
     id: "h-1",
     user: "Osman Marin",
     action: "Creación de Obligación",
-    details: "Registró la obligación de pago 'Impuesto Anual de Registro de Hosting' por $350 para la cuenta Vinannet.",
+    details: "Registró la obligación de pago 'Impuesto Anual de Registro de Hosting' por S/ 350 para la cuenta Vinannet.",
     timestamp: "2026-05-26T14:30:00.000Z"
   },
   {
     id: "h-2",
     user: "Marie Puscan",
     action: "Ajuste de Cuenta",
-    details: "Actualizó el estado de 'Factura de Proveedor Textil' en Vinanmerch ($600) a PENDIENTE.",
+    details: "Actualizó el estado de 'Factura de Proveedor Textil' en Vinanmerch (S/ 600) a PENDIENTE.",
     timestamp: "2026-05-26T16:15:00.000Z"
   },
   {
