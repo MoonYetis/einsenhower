@@ -389,6 +389,8 @@ interface FinanceTransaction {
   due_date?: string; // Para obligaciones
   status?: "PENDIENTE" | "PAGADO"; // Para obligaciones
   created_at: string;
+  is_recurrent?: boolean;
+  recurrence_parent_id?: string;
 }
 
 const defaultFinances: { categories: string[]; transactions: FinanceTransaction[] } = {
@@ -503,15 +505,32 @@ app.get("/api/finances", (req, res) => {
   res.json(data);
 });
 
+function addMonths(dateStr: string, months: number): string {
+  const [yearStr, monthStr, dayStr] = dateStr.split("-");
+  let year = parseInt(yearStr);
+  let month = parseInt(monthStr) - 1; // 0-indexed for Date
+  let day = parseInt(dayStr);
+  
+  const dateObj = new Date(year, month, day);
+  dateObj.setMonth(dateObj.getMonth() + months);
+  
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const dd = String(dateObj.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // 2. Crear una nueva transacción (ingreso, egreso u obligación)
 app.post("/api/finances/transactions", (req, res) => {
-  const { title, description, amount, type, category, date, due_date, status } = req.body;
+  const { title, description, amount, type, category, date, due_date, status, is_recurrent } = req.body;
   
   if (!title || !amount || !type || !category || !date) {
     return res.status(400).json({ error: "Faltan campos mandatorios (título, monto, tipo, categoría, fecha)" });
   }
 
   const data = readFinances();
+  const parentId = is_recurrent ? `rec-${Math.floor(100000 + Math.random() * 900000)}` : undefined;
+
   const newTx: FinanceTransaction = {
     id: `tx-${Math.floor(1000 + Math.random() * 9000)}`,
     title,
@@ -522,10 +541,39 @@ app.post("/api/finances/transactions", (req, res) => {
     date,
     due_date: due_date || undefined,
     status: type === "OBLIGACIONES" ? (status || "PENDIENTE") : undefined,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    is_recurrent: is_recurrent || false,
+    recurrence_parent_id: parentId
   };
 
   data.transactions.unshift(newTx);
+
+  // Generar ocurrencias futuras para los siguientes 24 meses si es recurrente
+  if (is_recurrent && parentId) {
+    for (let i = 1; i <= 24; i++) {
+      const nextDate = addMonths(date, i);
+      let nextDueDate = undefined;
+      if (type === "OBLIGACIONES" && due_date) {
+        nextDueDate = addMonths(due_date, i);
+      }
+
+      data.transactions.unshift({
+        id: `tx-${Math.floor(1000 + Math.random() * 9000)}-r${i}`,
+        title,
+        description: description || "",
+        amount: parseFloat(amount),
+        type,
+        category,
+        date: nextDate,
+        due_date: nextDueDate,
+        status: type === "OBLIGACIONES" ? "PENDIENTE" : undefined,
+        created_at: new Date().toISOString(),
+        is_recurrent: true,
+        recurrence_parent_id: parentId
+      });
+    }
+  }
+
   writeFinances(data);
   res.status(201).json(newTx);
 });
@@ -554,8 +602,6 @@ app.patch("/api/finances/transactions/:id", (req, res) => {
   
   if (status !== undefined) {
     tx.status = status;
-    // Si marcamos una obligación como PAGADO, de manera opcional podemos registrarla también como un egreso real
-    // Pero lo mantendremos como tipo OBLIGACIÓN con estatuto PAGADO para no duplicar, lo cual es muy transparente.
   }
 
   data.transactions[txIndex] = tx;
@@ -563,12 +609,25 @@ app.patch("/api/finances/transactions/:id", (req, res) => {
   res.json(tx);
 });
 
-// 4. Eliminar una transacción
+// 4. Eliminar una transacción (opcionalmente eliminando serie recurrente)
 app.delete("/api/finances/transactions/:id", (req, res) => {
   const { id } = req.params;
+  const deleteAllRecurrences = req.query.deleteAllRecurrences === "true";
+  
   const data = readFinances();
   const initialLen = data.transactions.length;
-  data.transactions = data.transactions.filter(t => t.id !== id);
+
+  if (deleteAllRecurrences) {
+    const targetTx = data.transactions.find(t => t.id === id);
+    if (targetTx && targetTx.recurrence_parent_id) {
+      const parentId = targetTx.recurrence_parent_id;
+      data.transactions = data.transactions.filter(t => t.recurrence_parent_id !== parentId);
+    } else {
+      data.transactions = data.transactions.filter(t => t.id !== id);
+    }
+  } else {
+    data.transactions = data.transactions.filter(t => t.id !== id);
+  }
 
   if (data.transactions.length === initialLen) {
     return res.status(404).json({ error: "Transacción no localizada" });

@@ -293,6 +293,8 @@ export default function App() {
     due_date?: string;
     status?: "PENDIENTE" | "PAGADO";
     created_at: string;
+    is_recurrent?: boolean;
+    recurrence_parent_id?: string;
   }
 
   // Estados de Finanzas Colectivas
@@ -312,7 +314,11 @@ export default function App() {
   const [newTxCategory, setNewTxCategory] = useState("Familiar");
   const [newTxDate, setNewTxDate] = useState("2026-05-27");
   const [newTxDueDate, setNewTxDueDate] = useState("2026-05-27");
+  const [newTxIsRecurrent, setNewTxIsRecurrent] = useState(false);
   const [showAddTxCard, setShowAddTxCard] = useState(false);
+
+  // Deletion modals for recurrences
+  const [recDeletionModal, setRecDeletionModal] = useState<{ isOpen: boolean; txId: string; title: string; parentId: string } | null>(null);
 
   // Formulario de Categorías Personalizadas
   const [newCustomCategoryInput, setNewCustomCategoryInput] = useState("");
@@ -333,6 +339,21 @@ export default function App() {
     return matchesMonth && matchesCategory && matchesType && matchesSearch;
   });
 
+  const reloadFinances = async () => {
+    try {
+      const res = await fetch("/api/finances");
+      if (res.ok) {
+        const data = await res.json();
+        setFinanceTransactions(data.transactions || []);
+        if (data.categories) {
+          setFinanceCategories(data.categories);
+        }
+      }
+    } catch (err) {
+      console.warn("Fallo al recargar finanzas:", err);
+    }
+  };
+
   // Funciones de API de Finanzas Colectivas
   const handleAddFinanceTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -352,17 +373,18 @@ export default function App() {
           category: selectedFinanceWorkspace,
           date: newTxDate,
           due_date: newTxType === "OBLIGACIONES" ? newTxDueDate : undefined,
-          status: newTxType === "OBLIGACIONES" ? "PENDIENTE" : undefined
+          status: newTxType === "OBLIGACIONES" ? "PENDIENTE" : undefined,
+          is_recurrent: newTxIsRecurrent
         })
       });
       if (res.ok) {
-        const created = await res.json();
-        setFinanceTransactions(prev => [created, ...prev]);
-        addLog(`💵 FINANZAS: Registrado nuevo ${newTxType.toLowerCase()} en [${selectedFinanceWorkspace}] - ${newTxTitle} ($${newTxAmount})`, "success");
+        await reloadFinances();
+        addLog(`💵 FINANZAS: Registrada nueva transacción ${newTxIsRecurrent ? "recurrrente" : ""} en [${selectedFinanceWorkspace}] - ${newTxTitle} ($${newTxAmount})`, "success");
         // Reset campos
         setNewTxTitle("");
         setNewTxDescription("");
         setNewTxAmount("");
+        setNewTxIsRecurrent(false);
         setShowAddTxCard(false);
       }
     } catch (err) {
@@ -371,19 +393,35 @@ export default function App() {
     }
   };
 
-  const handleDeleteFinanceTransaction = async (id: string, title: string) => {
+  const executeDeleteFinanceTransaction = async (id: string, deleteAllRecurrences: boolean, title: string) => {
     try {
-      const res = await fetch(`/api/finances/transactions/${id}`, {
+      const url = `/api/finances/transactions/${id}?deleteAllRecurrences=${deleteAllRecurrences}`;
+      const res = await fetch(url, {
         method: "DELETE"
       });
       if (res.ok) {
-        setFinanceTransactions(prev => prev.filter(t => t.id !== id));
-        addLog(`🗑️ FINANZAS: Eliminada transacción - ${title}`, "warn");
+        await reloadFinances();
+        addLog(`🗑️ FINANZAS: Eliminado - "${title}" ${deleteAllRecurrences ? "(toda la serie recurrente)" : "(este mes únicamente)"}`, "warn");
+        setRecDeletionModal(null);
       }
     } catch (err) {
       console.error(err);
       addLog("❌ ERROR: No se pudo eliminar la transacción.", "error");
     }
+  };
+
+  const handleDeleteFinanceTransaction = async (id: string, title: string) => {
+    const tx = financeTransactions.find(t => t.id === id);
+    if (tx && tx.recurrence_parent_id) {
+      setRecDeletionModal({
+        isOpen: true,
+        txId: id,
+        title: title,
+        parentId: tx.recurrence_parent_id
+      });
+      return;
+    }
+    await executeDeleteFinanceTransaction(id, false, title);
   };
 
   const handleToggleObligationStatus = async (id: string, currentStatus: "PENDIENTE" | "PAGADO", title: string) => {
@@ -4074,6 +4112,25 @@ services:
                           </div>
                         )}
 
+                        {/* Control de Recurrencia de Transacciones */}
+                        <div className="p-3 bg-indigo-55/70 border border-indigo-100 rounded-xl flex items-start gap-2.5">
+                          <input
+                            type="checkbox"
+                            id="txIsRecurrent"
+                            checked={newTxIsRecurrent}
+                            onChange={(e) => setNewTxIsRecurrent(e.target.checked)}
+                            className="mt-0.5 w-4.5 h-4.5 text-indigo-650 border-slate-300 rounded focus:ring-indigo-600 cursor-pointer"
+                          />
+                          <label htmlFor="txIsRecurrent" className="select-none cursor-pointer">
+                            <span className="block text-[10.5px] font-black text-indigo-900 uppercase tracking-tight">
+                              🔄 ¿Hacer transacción recurrente?
+                            </span>
+                            <span className="block text-[10px] text-indigo-750 font-medium leading-relaxed mt-0.5">
+                              Si está habilitado, esta transacción se mantendrá en los meses siguientes de manera automática para evitar tener que registrarla manualmente cada mes.
+                            </span>
+                          </label>
+                        </div>
+
                         <div className="pt-2 border-t border-slate-200 flex justify-end gap-2">
                           <button
                             type="button"
@@ -4312,6 +4369,12 @@ services:
                                     {tx.category}
                                   </span>
 
+                                  {tx.recurrence_parent_id && (
+                                    <span className="text-[8.5px] font-mono bg-indigo-50 text-indigo-750 border border-indigo-150 px-1.5 py-0.2 rounded-full uppercase font-black" title="Transacción recurrente mensual automática">
+                                      🔄 Fijo / Recurrente
+                                    </span>
+                                  )}
+
                                   <span className="text-[8px] font-mono text-slate-400 block">
                                     📅 {tx.date}
                                   </span>
@@ -4395,6 +4458,63 @@ services:
                 </div>
 
               </div>
+
+              {/* Modal Colectivo de Borrado Recurrente */}
+              {recDeletionModal && recDeletionModal.isOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in animate-duration-150">
+                  <div className="bg-white border-2 border-slate-950 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-slide-in text-left">
+                    <button
+                      onClick={() => setRecDeletionModal(null)}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 cursor-pointer text-sm font-bold font-mono"
+                    >
+                      ✕
+                    </button>
+                    
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-3xl">🔄</span>
+                      <div>
+                        <h4 className="font-sans font-black text-slate-900 text-sm uppercase tracking-tight">
+                          Transacción de Fijo / Recurrente
+                        </h4>
+                        <p className="text-[10px] font-mono text-indigo-650 uppercase font-black tracking-wider">
+                          Sismógrafo de Balances Colectivos
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-750 leading-relaxed">
+                      Has seleccionado eliminar la transacción <b className="text-slate-900 font-extrabold font-sans">"{recDeletionModal.title}"</b>. 
+                      Este registro forma parte de una serie recurrente mensual configurada de manera colectiva.
+                    </p>
+
+                    <div className="mt-5 space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => executeDeleteFinanceTransaction(recDeletionModal.txId, true, recDeletionModal.title)}
+                        className="w-full p-3 bg-rose-600 hover:bg-rose-700 text-white font-mono font-bold text-xs uppercase rounded-xl tracking-wide transition-all shadow-sm cursor-pointer block text-center"
+                      >
+                        💥 Eliminar TODAS las semanas / meses futuras
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => executeDeleteFinanceTransaction(recDeletionModal.txId, false, recDeletionModal.title)}
+                        className="w-full p-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-mono font-bold text-xs uppercase rounded-xl tracking-wide transition-all cursor-pointer block text-center border border-slate-250"
+                      >
+                        📅 Eliminar SOLAMENTE este mes de consulta
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRecDeletionModal(null)}
+                        className="w-full p-2.5 text-slate-400 hover:text-slate-800 font-sans font-medium text-[11px] text-center transition-all cursor-pointer block uppercase tracking-wider"
+                      >
+                        Cancelar Operación
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}
