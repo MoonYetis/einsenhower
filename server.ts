@@ -762,6 +762,171 @@ app.delete("/api/finances/categories/:name", (req, res) => {
 });
 
 
+// === SISTEMA DE DIRECCIÓN ESTRATÉGICA Y PLANIFICATORIA (STRATEGIC_PLAN.JSON) ===
+
+const STRATEGY_FILE = path.join(process.cwd(), "strategic_plan.json");
+
+interface StrategicObjective {
+  id: string;
+  title: string;
+  pillar: string;
+  owner: string;
+  targetPeriod: string;
+  status: "CONCEPT" | "ACTIVE" | "COMPLETED" | "DELAYED";
+  progress: number;
+  description: string;
+}
+
+interface StrategicPlan {
+  vision: string;
+  mission: string;
+  strategicObjectives: StrategicObjective[];
+}
+
+const defaultStrategy: StrategicPlan = {
+  vision: "Consolidar a MatrixOS como el núcleo operativo unificado para la gestión familiar y de negocios colectivos en 2026, logrando automatización del 90% en flujos financieros y un 100% de trazabilidad en las operaciones de equipo.",
+  mission: "Sincronizar las actividades, finanzas y tareas tácticas diarias del equipo de manera ágil, transparente y con un enfoque balanceado entre el alto rendimiento profesional y la salud mental del hogar.",
+  strategicObjectives: [
+    {
+      id: "st-1",
+      title: "Internacionalización de la Tienda de Comercio de Vinanmerch",
+      pillar: "Expansión Comercial",
+      owner: "Marie Puscan",
+      targetPeriod: "Q3 2026",
+      status: "ACTIVE",
+      progress: 35,
+      description: "Lanzar pasarela de pago internacional Stripe complementaria con envíos automatizados a Sudamérica."
+    },
+    {
+      id: "st-2",
+      title: "Automatización Total del Sistema de Liquidación Airbnb",
+      pillar: "Sostenibilidad Financiera",
+      owner: "Osman Marin",
+      targetPeriod: "Q2 2026",
+      status: "COMPLETED",
+      progress: 100,
+      description: "Configurar notificaciones Webhook instantáneas para capturar reservas y consolidar comisiones mensuales de forma automática en el cuadrante financiero."
+    },
+    {
+      id: "st-3",
+      title: "Estabilización de Infraestructura Backend y Base de Datos",
+      pillar: "Excelencia Tecnológica",
+      owner: "Marie Puscan",
+      targetPeriod: "Q3 2026",
+      status: "ACTIVE",
+      progress: 60,
+      description: "Migrar scripts locales a pools de conexión asincrónicas para mitigar picos de latencia en consultas cruzadas."
+    },
+    {
+      id: "st-4",
+      title: "Mitigación Preventiva de Fatiga Cognitiva del Equipo",
+      pillar: "Salud de Equipo",
+      owner: "Osman Marin",
+      targetPeriod: "Q4 2026",
+      status: "ACTIVE",
+      progress: 50,
+      description: "Mantener equilibrio operativo automatizando delegaciones de Q3, implementando bitácoras pomodoro e incentivando la desconexión familiar del fin de semana."
+    }
+  ]
+};
+
+function readStrategy(): StrategicPlan {
+  try {
+    if (fs.existsSync(STRATEGY_FILE)) {
+      const data = fs.readFileSync(STRATEGY_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error leyendo archivo de estrategia:", error);
+  }
+  writeStrategy(defaultStrategy);
+  return defaultStrategy;
+}
+
+function writeStrategy(data: StrategicPlan): void {
+  try {
+    fs.writeFileSync(STRATEGY_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error escribiendo archivo de estrategia:", error);
+  }
+}
+
+// Rutas de Estrategia
+app.get("/api/strategy", (req, res) => {
+  res.json(readStrategy());
+});
+
+app.post("/api/strategy", (req, res) => {
+  const { vision, mission } = req.body;
+  const data = readStrategy();
+  if (vision !== undefined) data.vision = vision;
+  if (mission !== undefined) data.mission = mission;
+  writeStrategy(data);
+  res.json(data);
+});
+
+app.post("/api/strategy/objectives", (req, res) => {
+  const { title, pillar, owner, targetPeriod, status, progress, description } = req.body;
+  if (!title || !pillar || !owner || !targetPeriod) {
+    return res.status(400).json({ error: "Faltan campos mandatorios para crear el objetivo estratégico (title, pillar, owner, targetPeriod)" });
+  }
+
+  const data = readStrategy();
+  const newObj: StrategicObjective = {
+    id: `st-${Math.floor(1000 + Math.random() * 9000)}`,
+    title,
+    pillar,
+    owner,
+    targetPeriod,
+    status: status || "CONCEPT",
+    progress: progress !== undefined ? Number(progress) : 0,
+    description: description || ""
+  };
+
+  data.strategicObjectives.push(newObj);
+  writeStrategy(data);
+  res.status(201).json(data);
+});
+
+app.patch("/api/strategy/objectives/:id", (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  
+  const data = readStrategy();
+  const idx = data.strategicObjectives.findIndex(o => o.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "Objetivo estratégico no localizado" });
+  }
+
+  const objective = data.strategicObjectives[idx];
+  if (updates.title !== undefined) objective.title = updates.title;
+  if (updates.pillar !== undefined) objective.pillar = updates.pillar;
+  if (updates.owner !== undefined) objective.owner = updates.owner;
+  if (updates.targetPeriod !== undefined) objective.targetPeriod = updates.targetPeriod;
+  if (updates.status !== undefined) objective.status = updates.status;
+  if (updates.progress !== undefined) objective.progress = Number(updates.progress);
+  if (updates.description !== undefined) objective.description = updates.description;
+
+  data.strategicObjectives[idx] = objective;
+  writeStrategy(data);
+  res.json(data);
+});
+
+app.delete("/api/strategy/objectives/:id", (req, res) => {
+  const { id } = req.params;
+  const data = readStrategy();
+  const initialLen = data.strategicObjectives.length;
+  data.strategicObjectives = data.strategicObjectives.filter(o => o.id !== id);
+
+  if (data.strategicObjectives.length === initialLen) {
+    return res.status(404).json({ error: "Objetivo estratégico no localizado" });
+  }
+
+  writeStrategy(data);
+  res.json(data);
+});
+
+
 // === INTEGRACIÓN DE VITE / PRODUCCIÓN ===
 async function start() {
   if (process.env.NODE_ENV !== "production") {

@@ -549,6 +549,177 @@ export default function App() {
     }
   };
 
+  // 2.5. SISTEMA DE DIRECCIÓN ESTRATÉGICA
+  interface StrategicObjective {
+    id: string;
+    title: string;
+    pillar: string;
+    owner: string;
+    targetPeriod: string;
+    status: "CONCEPT" | "ACTIVE" | "COMPLETED" | "DELAYED";
+    progress: number;
+    description: string;
+  }
+
+  interface StrategicPlan {
+    vision: string;
+    mission: string;
+    strategicObjectives: StrategicObjective[];
+  }
+
+  const [strategicPlan, setStrategicPlan] = useState<StrategicPlan>({
+    vision: "Consolidar a MatrixOS como el núcleo operativo unificado para la gestión familiar y de negocios colectivos en 2026, logrando automatización del 90% en flujos financieros y un 100% de trazabilidad en las operaciones de equipo.",
+    mission: "Sincronizar las actividades, finanzas y tareas tácticas diarias del equipo de manera ágil, transparente y con un enfoque balanceado entre el alto rendimiento profesional y la salud mental del hogar.",
+    strategicObjectives: []
+  });
+
+  const [isEditingVisionMission, setIsEditingVisionMission] = useState(false);
+  const [tempVision, setTempVision] = useState("");
+  const [tempMission, setTempMission] = useState("");
+
+  const [showAddObjectiveForm, setShowAddObjectiveForm] = useState(false);
+  const [editingObjectiveId, setEditingObjectiveId] = useState<string | null>(null);
+
+  // Form states for creating/editing objectives
+  const [newObjTitle, setNewObjTitle] = useState("");
+  const [newObjPillar, setNewObjPillar] = useState("Expansión Comercial");
+  const [newObjOwner, setNewObjOwner] = useState("Osman Marin");
+  const [newObjPeriod, setNewObjPeriod] = useState("Q3 2026");
+  const [newObjStatus, setNewObjStatus] = useState<"CONCEPT" | "ACTIVE" | "COMPLETED" | "DELAYED">("CONCEPT");
+  const [newObjProgress, setNewObjProgress] = useState(0);
+  const [newObjDesc, setNewObjDesc] = useState("");
+
+  const fetchStrategyPlan = async () => {
+    try {
+      const res = await fetch("/api/strategy");
+      if (res.ok) {
+        const data = await res.json();
+        setStrategicPlan(data);
+        setTempVision(data.vision);
+        setTempMission(data.mission);
+      }
+    } catch (err) {
+      console.warn("Fallo cargando plan de estrategia:", err);
+    }
+  };
+
+  const handleUpdateVisionMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vision: tempVision, mission: tempMission })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStrategicPlan(data);
+        setIsEditingVisionMission(false);
+        addLog("🎯 ESTRATEGIA: Misión y Visión actualizadas con éxito.", "success");
+        addTeamHistoryEntry("Ajuste Directivo", "Actualizó la misión y visión a largo plazo de MatrixOS.");
+      }
+    } catch (err) {
+      addLog("❌ Error actualizando Misión/Visión.", "error");
+    }
+  };
+
+  const handleCreateOrUpdateObjective = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newObjTitle.trim() || !newObjPillar.trim() || !newObjPeriod.trim()) {
+      addLog("⚠️ ERROR: Faltan campos para registrar el objetivo estratégico.", "warn");
+      return;
+    }
+
+    try {
+      if (editingObjectiveId) {
+        // Mode: Update/Edit
+        const res = await fetch(`/api/strategy/objectives/${editingObjectiveId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newObjTitle,
+            pillar: newObjPillar,
+            owner: newObjOwner,
+            targetPeriod: newObjPeriod,
+            status: newObjStatus,
+            progress: newObjProgress,
+            description: newObjDesc
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStrategicPlan(data);
+          addLog(`🎯 ESTRATEGIA: Objetivo actualizado - "${newObjTitle}"`, "success");
+          addTeamHistoryEntry("Ajuste de Objetivo Estratégico", `Actualizó datos y progreso (${newObjProgress}%) del hito estratégico: "${newObjTitle}".`);
+          resetObjForm();
+        }
+      } else {
+        // Mode: Create
+        const res = await fetch("/api/strategy/objectives", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newObjTitle,
+            pillar: newObjPillar,
+            owner: newObjOwner,
+            targetPeriod: newObjPeriod,
+            status: newObjStatus,
+            progress: newObjProgress,
+            description: newObjDesc
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStrategicPlan(data);
+          addLog(`🎯 ESTRATEGIA: Registrado nuevo objetivo - "${newObjTitle}"`, "success");
+          addTeamHistoryEntry("Creación de Hito Estratégico", `Registró el nuevo objetivo estratégico "${newObjTitle}" bajo el pilar "${newObjPillar}".`);
+          resetObjForm();
+        }
+      }
+    } catch (err) {
+      addLog("❌ Error procesando objetivo de estrategia.", "error");
+    }
+  };
+
+  const handleStartEditObjective = (obj: StrategicObjective) => {
+    setEditingObjectiveId(obj.id);
+    setNewObjTitle(obj.title);
+    setNewObjPillar(obj.pillar);
+    setNewObjOwner(obj.owner);
+    setNewObjPeriod(obj.targetPeriod);
+    setNewObjStatus(obj.status);
+    setNewObjProgress(obj.progress);
+    setNewObjDesc(obj.description);
+    setShowAddObjectiveForm(true);
+  };
+
+  const handleDeleteObjective = async (id: string, title: string) => {
+    if (!window.confirm(`¿Está seguro de querer remover el objetivo estratégico "${title}"?`)) return;
+    try {
+      const res = await fetch(`/api/strategy/objectives/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        const data = await res.json();
+        setStrategicPlan(data);
+        addLog(`🗑️ ESTRATEGIA: Objetivo estratégico eliminado - "${title}"`, "warn");
+        addTeamHistoryEntry("Remoción de Hito Estratégico", `Removió el objetivo estratégico "${title}".`);
+      }
+    } catch (err) {
+      addLog("❌ Error eliminando objetivo.", "error");
+    }
+  };
+
+  const resetObjForm = () => {
+    setEditingObjectiveId(null);
+    setNewObjTitle("");
+    setNewObjPillar("Expansión Comercial");
+    setNewObjOwner("Osman Marin");
+    setNewObjPeriod("Q3 2026");
+    setNewObjStatus("CONCEPT");
+    setNewObjProgress(0);
+    setNewObjDesc("");
+    setShowAddObjectiveForm(false);
+  };
+
   // 1. Temporizador de Pomodoro e Incremento de Enfoque Sincronizado
   const [pomodoroTaskId, setPomodoroTaskId] = useState<string | null>(null);
   const [pomodoroTimeLeft, setPomodoroTimeLeft] = useState(1500); // 25 Minutos
@@ -785,9 +956,23 @@ export default function App() {
         console.warn("Fallo de API de historial, usando fallback:", err);
       }
     };
+    const fetchStrategy = async () => {
+      try {
+        const res = await fetch("/api/strategy");
+        if (res.ok) {
+          const data = await res.json();
+          setStrategicPlan(data);
+          setTempVision(data.vision);
+          setTempMission(data.mission);
+        }
+      } catch (err) {
+        console.warn("Fallo de API de estrategia:", err);
+      }
+    };
     fetchTasks();
     fetchFinances();
     fetchHistory();
+    fetchStrategy();
   }, []);
 
   // Estado para crear nuevas tareas interactivas directamente en el tablero
@@ -1895,7 +2080,21 @@ services:
               }`}
             >
               <History className="w-3.5 h-3.5 text-indigo-500" />
-              Trazabilidad & Historial
+              Trazabilidad
+            </button>
+            <button
+              onClick={() => {
+                setActiveView("strategy");
+                fetchStrategyPlan();
+              }}
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "strategy"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 text-rose-500" />
+              Plan Estratégico
             </button>
           </div>
 
@@ -4922,6 +5121,417 @@ services:
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeView === "strategy" && (
+            <div className="space-y-6 animate-fade-in font-sans">
+              
+              {/* BRAND HEADER & METRICS */}
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-mono text-xs font-black text-rose-700 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                    DIRECCIÓN ESTRATÉGICA & HORIZONTE 2026
+                  </h3>
+                  <h4 className="font-black text-lg text-slate-900 tracking-tight mt-1 font-sans">
+                    Navegación del Rumbo y Plan Maestro
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-xl leading-relaxed mt-1">
+                    Establece el norte de <b>MatrixOS</b> conectando las metas aspiracionales a largo plazo con nuestro esfuerzo operativo y financiero diario.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                        setShowAddObjectiveForm(!showAddObjectiveForm);
+                        setEditingObjectiveId(null);
+                        setNewObjTitle("");
+                        setNewObjDesc("");
+                    }}
+                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-mono text-xs font-bold rounded-lg border border-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    🚀 {showAddObjectiveForm ? "Ver Plan de Ruta" : "Nueva Iniciativa Estratégica"}
+                  </button>
+                </div>
+              </div>
+
+              {/* MISSION & VISION CORPORATE COMPASS */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Vision Card */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-6 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[170px]">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                    <Sparkles className="w-32 h-32 text-indigo-400" />
+                  </div>
+                  <div className="space-y-2 relative z-10 text-left">
+                    <span className="text-[9px] font-mono font-black text-indigo-400 uppercase tracking-widest">NUESTRO RUMBO MÁS ALTO</span>
+                    <h5 className="text-sm font-black text-indigo-200 uppercase tracking-wider">Visión 2026</h5>
+                    
+                    {isEditingVisionMission ? (
+                      <textarea
+                        value={tempVision}
+                        onChange={(e) => setTempVision(e.target.value)}
+                        className="w-full text-xs p-2 bg-slate-800 border border-slate-700 text-white rounded focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-300 leading-relaxed font-sans font-medium italic">
+                        "{strategicPlan.vision || "Aún no se ha especificado la visión estratégica de largo plazo para este equipo."}"
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4 flex justify-between items-center relative z-10 border-t border-slate-800/60 pt-3">
+                    <span className="text-[10px] text-slate-400 font-mono">Líderes de Rumbo</span>
+                    {isEditingVisionMission ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleUpdateVisionMission}
+                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-mono text-[10px] uppercase font-bold rounded cursor-pointer"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingVisionMission(false);
+                            setTempVision(strategicPlan.vision);
+                            setTempMission(strategicPlan.mission);
+                          }}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] uppercase font-bold rounded cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditingVisionMission(true)}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-mono underline cursor-pointer"
+                      >
+                        ✍️ Editar Rumbo Central
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mission Card */}
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-xxs relative overflow-hidden flex flex-col justify-between min-h-[170px]">
+                  <div className="space-y-2 text-left">
+                    <span className="text-[9px] font-mono font-black text-rose-500 uppercase tracking-widest">NUESTRO PROPÓSITO DIARIO</span>
+                    <h5 className="text-sm font-black text-slate-800 uppercase tracking-wider font-sans">Misión Operativa</h5>
+                    
+                    {isEditingVisionMission ? (
+                      <textarea
+                        value={tempMission}
+                        onChange={(e) => setTempMission(e.target.value)}
+                        className="w-full text-xs p-2 bg-slate-50 border border-slate-200 text-slate-800 rounded focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-600 leading-relaxed font-sans font-medium italic">
+                        "{strategicPlan.mission || "Aún no se ha especificado la misión operativa para guiar las actividades tácticas diarias."}"
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex justify-between items-center border-t border-slate-100 pt-3">
+                    <span className="text-[10px] text-slate-400 font-mono">Trazabilidad Sincronizada</span>
+                    <span className="text-[9px] font-mono font-black text-rose-600 bg-rose-50 border border-rose-100/65 px-2 py-0.5 rounded uppercase">
+                      100% Colectivo
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* STATISTICS GRID */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs">
+                  <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Hitos Totales</span>
+                  <span className="text-2xl font-mono font-black text-slate-900 mt-0.5 block">
+                    {strategicPlan.strategicObjectives.length}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs">
+                  <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Iniciativas Activas</span>
+                  <span className="text-2xl font-mono font-black text-rose-600 mt-0.5 block">
+                    {strategicPlan.strategicObjectives.filter(o => o.status === "ACTIVE").length}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs">
+                  <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Completados</span>
+                  <span className="text-2xl font-mono font-black text-emerald-600 mt-0.5 block">
+                    {strategicPlan.strategicObjectives.filter(o => o.status === "COMPLETED").length}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xxs">
+                  <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">Rendimiento Promedio</span>
+                  <span className="text-2xl font-mono font-black text-indigo-600 mt-0.5 block">
+                    {strategicPlan.strategicObjectives.length > 0 
+                      ? Math.round(strategicPlan.strategicObjectives.reduce((acc, obj) => acc + obj.progress, 0) / strategicPlan.strategicObjectives.length) 
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* INTERACTIVE FORM FOR SUBMITTING / EDITING STRATEGIC OBJECTIVE */}
+              {showAddObjectiveForm && (
+                <div className="bg-white border border-slate-300 rounded-2xl p-6 shadow-sm animate-fade-in relative z-10 text-left space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider font-mono flex items-center gap-1.5">
+                      🚀 {editingObjectiveId ? "Modificar Hito Estratégico" : "Registrar Nuevo Hito en Plan Maestro"}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={resetObjForm}
+                      className="text-xs font-mono font-bold text-slate-400 hover:text-slate-800 cursor-pointer"
+                    >
+                      ❌ Cerrar
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateOrUpdateObjective} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Title */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-black text-slate-500 block uppercase tracking-wider">Nombre del Hito/Iniciativa</label>
+                      <input
+                        type="text"
+                        value={newObjTitle}
+                        onChange={(e) => setNewObjTitle(e.target.value)}
+                        placeholder="Ej. Consolidación de la pasarela Stripe para Vinanmerch"
+                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs font-sans"
+                        required
+                      />
+                    </div>
+
+                    {/* Pillar */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-black text-slate-500 block uppercase tracking-wider">Pilar Estratégico Asociado</label>
+                      <select
+                        value={newObjPillar}
+                        onChange={(e) => setNewObjPillar(e.target.value)}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs cursor-pointer font-sans"
+                      >
+                        <option value="Expansión Comercial">🎯 Expansión Comercial (Línea de Negocio)</option>
+                        <option value="Sostenibilidad Financiera">💳 Sostenibilidad Financiera (Retorno y Gestión)</option>
+                        <option value="Excelencia Tecnológica">💻 Excelencia Tecnológica (Sistemas e Infraestructura)</option>
+                        <option value="Salud de Equipo">🌿 Salud de Equipo (Balance de Vida y Desconexión)</option>
+                      </select>
+                    </div>
+
+                    {/* Owner */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-black text-slate-500 block uppercase tracking-wider">Responsable Central</label>
+                      <select
+                        value={newObjOwner}
+                        onChange={(e) => setNewObjOwner(e.target.value)}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs cursor-pointer font-sans"
+                      >
+                        <option value="Osman Marin">Osman Marin (OM)</option>
+                        <option value="Marie Puscan">Marie Puscan (MP)</option>
+                      </select>
+                    </div>
+
+                    {/* Target Quarter */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-black text-slate-400 block uppercase tracking-wider">Período Límite / Meta de Entrega</label>
+                      <select
+                        value={newObjPeriod}
+                        onChange={(e) => setNewObjPeriod(e.target.value)}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs cursor-pointer font-sans"
+                      >
+                        <option value="Q1 2026">Q1 2026 (Primer Trimestre)</option>
+                        <option value="Q2 2026">Q2 2026 (Segundo Trimestre)</option>
+                        <option value="Q3 2026">Q3 2026 (Tercer Trimestre)</option>
+                        <option value="Q4 2026">Q4 2026 (Cuarto Trimestre)</option>
+                        <option value="Horizonte 2027">Horizonte 2027</option>
+                      </select>
+                    </div>
+
+                    {/* Status */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-black text-slate-450 block uppercase tracking-wider font-mono">Estado de Ejecución</label>
+                      <select
+                        value={newObjStatus}
+                        onChange={(e) => setNewObjStatus(e.target.value as any)}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs cursor-pointer font-sans"
+                      >
+                        <option value="CONCEPT">⏳ EN CONCEPTO / PROPUESTA</option>
+                        <option value="ACTIVE">🏎️ ACTIVO / EN EJECUCIÓN</option>
+                        <option value="COMPLETED">✅ COMPLETADO EXCEPCIONALMENTE</option>
+                        <option value="DELAYED">⚠️ EN ESPERA / RETRASADO</option>
+                      </select>
+                    </div>
+
+                    {/* Progress */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-mono font-black text-slate-400 block uppercase tracking-wider">Progreso Aproximado ({newObjProgress}%)</label>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={newObjProgress}
+                        onChange={(e) => setNewObjProgress(Number(e.target.value))}
+                        className="w-full h-2.5 bg-slate-100 rounded-lg appearance-none cursor-pointer mt-2.5 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-mono font-black text-slate-400 block uppercase tracking-wider">Descripción y Detalle del Impacto</label>
+                      <textarea
+                        value={newObjDesc}
+                        onChange={(e) => setNewObjDesc(e.target.value)}
+                        placeholder="Detalle de forma transparente qué se resolverá con esta meta y qué beneficios aporta a Osman, Marie, o los negocios colectivos."
+                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 shadow-xxs font-sans"
+                        rows={3}
+                      />
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="md:col-span-2 pt-3 border-t border-slate-100 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={resetObjForm}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-xs font-bold rounded-lg cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-mono text-xs font-bold rounded-lg cursor-pointer shadow-xxs"
+                        style={{ backgroundColor: '#e11d48' }}
+                      >
+                        {editingObjectiveId ? "💾 Actualizar Datos" : "🚀 Registrar en Plan Maestro"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* STRATEGIC ROADMAP - VIEW TILES/GRID */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs text-left">
+                <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-2 font-mono pb-2 border-b border-slate-150 mb-4">
+                  <Compass className="w-4 h-4 text-rose-600 animate-spin-slow" />
+                  Ruta Maestro Estratégica
+                </h4>
+
+                {strategicPlan.strategicObjectives.length === 0 ? (
+                  <div className="text-center py-20 text-slate-400 font-mono text-xs border border-dashed border-slate-200 rounded-xl space-y-2">
+                    <div>🔮 No hay ningún objetivo estratégico definido en el sistema.</div>
+                    <p className="text-[10px] text-slate-400">Presiona el botón "+ Nueva Iniciativa Estratégica" arriba para asegurar el rumbo.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {strategicPlan.strategicObjectives.map((obj) => {
+                      const isOM = obj.owner === "Osman Marin";
+                      const isMP = obj.owner === "Marie Puscan";
+
+                      // Badge style
+                      let statusBadge = "bg-slate-50 border-slate-200 text-slate-600";
+                      if (obj.status === "ACTIVE") statusBadge = "bg-rose-50 border-rose-220 text-rose-700 font-black animate-pulse";
+                      if (obj.status === "COMPLETED") statusBadge = "bg-emerald-50 border-emerald-250 text-emerald-700 font-black";
+                      if (obj.status === "DELAYED") statusBadge = "bg-amber-50 border-amber-250 text-amber-700";
+
+                      return (
+                        <div 
+                          key={obj.id}
+                          className="p-5 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 rounded-2xl transition-all shadow-xxs flex flex-col justify-between space-y-4"
+                        >
+                          <div className="space-y-3">
+                            {/* Target Quarter & Status row */}
+                            <div className="flex justify-between items-center gap-2">
+                              <span className="font-mono text-[9px] font-black text-rose-600 bg-rose-50 border border-rose-100/65 px-2 py-0.5 rounded tracking-wider uppercase">
+                                {obj.targetPeriod}
+                              </span>
+                              
+                              <div className="flex gap-1.5 items-center">
+                                <span className={`text-[8.5px] border uppercase px-1.5 py-0.2 rounded font-mono ${statusBadge}`}>
+                                  {obj.status === "CONCEPT" ? "Propuesta" :
+                                   obj.status === "ACTIVE" ? "Activo" :
+                                   obj.status === "COMPLETED" ? "Completado" : "Demorado"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Title & Description */}
+                            <div>
+                              <span className="text-[9px] font-mono font-black text-slate-400 block uppercase tracking-wider">
+                                {obj.pillar}
+                              </span>
+                              <h5 className="text-sm font-black text-slate-900 tracking-tight leading-snug mt-0.5">
+                                {obj.title}
+                              </h5>
+                              <p className="text-xs text-slate-500 mt-1 leading-relaxed font-sans font-medium line-clamp-3">
+                                {obj.description || "Sin descripción detallada de este hito estratégico."}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Progress bar & Actions bar */}
+                          <div className="space-y-3 pt-3 border-t border-slate-100">
+                            {/* Progress info */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[10px] font-mono">
+                                <span className="text-slate-400">Progreso de la Iniciativa</span>
+                                <span className="font-black text-slate-800">{obj.progress}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    obj.status === "COMPLETED" ? "bg-emerald-500" :
+                                    obj.status === "DELAYED" ? "bg-amber-450" : "bg-rose-500"
+                                  }`}
+                                  style={{ width: `${obj.progress}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Owner, Metadata & Actions */}
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-[9px] font-black uppercase text-white ${
+                                  isOM ? "bg-indigo-650" : isMP ? "bg-emerald-550" : "bg-slate-800"
+                                }`}>
+                                  {isOM ? "OM" : isMP ? "MP" : "OS"}
+                                </span>
+                                <div className="text-left leading-none">
+                                  <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase">Propietario</span>
+                                  <span className="text-[10px] font-black text-slate-700 block">{obj.owner}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditObjective(obj)}
+                                  className="p-1 px-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-950 font-mono text-[10px] font-bold border border-slate-200 rounded transition-all cursor-pointer"
+                                >
+                                  ✏️ Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteObjective(obj.id, obj.title)}
+                                  className="p-1 px-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-mono text-[10px] border border-slate-200 hover:border-rose-220 rounded transition-all cursor-pointer"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
