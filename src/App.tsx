@@ -470,6 +470,10 @@ export default function App() {
   };
 
   const handleDeleteCustomCategory = async (catName: string) => {
+    if (financeCategories.length <= 1) {
+      addLog(`⚠️ ERROR: Debe mantener al menos una cuenta activa para poder operar el balance.`, "error");
+      return;
+    }
     try {
       const res = await fetch(`/api/finances/categories/${encodeURIComponent(catName)}`, {
         method: "DELETE"
@@ -477,9 +481,9 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setFinanceCategories(data.categories);
-        addLog(`🗑️ CATEGORÍA FINANCIERA: Eliminada categoría - ${catName}`, "warn");
+        addLog(`🗑️ CATEGORÍA FINANCIERA: Eliminada la cuenta / categoría - ${catName}`, "warn");
         if (selectedFinanceWorkspace === catName) {
-          setSelectedFinanceWorkspace(data.categories[0] || "Familiar");
+          setSelectedFinanceWorkspace(data.categories[0] || "General");
         }
         if (newTxCategory === catName) {
           setNewTxCategory(data.categories[0] || "General");
@@ -4190,19 +4194,18 @@ services:
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             {financeCategories.map(cat => {
-                              const isSystem = ["Familiar", "Vinannet", "Vinanmerch", "Airbnb"].includes(cat);
                               return (
                                 <div key={cat} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-mono">
                                   <span className="font-bold text-slate-700 uppercase tracking-tight truncate mr-1">
                                     {cat === "Familiar" ? "🏡 " : cat === "Vinannet" ? "🌐 " : cat === "Vinanmerch" ? "👕 " : cat === "Airbnb" ? "🔑 " : "💼 "}
-                                    {cat} {isSystem && "🔒"}
+                                    {cat}
                                   </span>
-                                  {!isSystem && (
+                                  {financeCategories.length > 1 && (
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteCustomCategory(cat)}
-                                      className="text-rose-500 hover:text-rose-750 pr-1 hover:scale-105 font-bold cursor-pointer"
-                                      title="Eliminar cuenta personalizada"
+                                      className="text-rose-505 hover:text-rose-700 pr-1 hover:scale-105 font-bold cursor-pointer transition-all"
+                                      title="Eliminar esta cuenta"
                                     >
                                       ✕
                                     </button>
