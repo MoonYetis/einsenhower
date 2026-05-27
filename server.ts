@@ -374,6 +374,244 @@ app.post("/api/tasks/:id/attachments", upload.single("file"), (req, res) => {
   res.status(201).json(newAttachment);
 });
 
+// === ENDPOINTS DE LA API DE FINANZAS (FINANCES.JSON STORAGE) ===
+
+const FINANCES_FILE = path.join(process.cwd(), "finances.json");
+
+interface FinanceTransaction {
+  id: string;
+  title: string;
+  description: string;
+  amount: number;
+  type: "INGRESOS" | "EGRESOS" | "OBLIGACIONES"; // Ingreso, Egreso, Obligación
+  category: string;
+  date: string; // YYYY-MM-DD
+  due_date?: string; // Para obligaciones
+  status?: "PENDIENTE" | "PAGADO"; // Para obligaciones
+  created_at: string;
+}
+
+const defaultFinances: { categories: string[]; transactions: FinanceTransaction[] } = {
+  categories: ["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas", "Servicios", "Impuestos"],
+  transactions: [
+    {
+      id: "tx-1",
+      title: "Cobro Factura SoftDev S.A.",
+      description: "Servicio de consultoría y desarrollo de software correspondiente a la primera fase.",
+      amount: 4500,
+      type: "INGRESOS",
+      category: "Negocio",
+      date: "2026-05-10",
+      created_at: "2026-05-10T08:00:00.000Z"
+    },
+    {
+      id: "tx-2",
+      title: "Suscripción AWS Cloud Run",
+      description: "Servidor de despliegue en la nube y base de datos postgresql administrada.",
+      amount: 180,
+      type: "EGRESOS",
+      category: "Negocio",
+      date: "2026-05-15",
+      created_at: "2026-05-15T12:00:00.000Z"
+    },
+    {
+      id: "tx-3",
+      title: "Alquiler de Oficina",
+      description: "Obligación de pago de oficina física del coworking.",
+      amount: 1200,
+      type: "OBLIGACIONES",
+      category: "Negocio",
+      date: "2026-05-30",
+      due_date: "2026-05-30",
+      status: "PENDIENTE",
+      created_at: "2026-05-01T09:00:00.000Z"
+    },
+    {
+      id: "tx-4",
+      title: "Supermercado Mensual Familiar",
+      description: "Compras de provisiones para la casa.",
+      amount: 450,
+      type: "EGRESOS",
+      category: "Familiar",
+      date: "2026-05-12",
+      created_at: "2026-05-12T15:30:00.000Z"
+    },
+    {
+      id: "tx-5",
+      title: "Colegio de los Niños",
+      description: "Colegiatura del mes en curso.",
+      amount: 380,
+      type: "OBLIGACIONES",
+      category: "Familiar",
+      date: "2026-05-28",
+      due_date: "2026-05-28",
+      status: "PAGADO",
+      created_at: "2026-05-01T10:00:00.000Z"
+    },
+    {
+      id: "tx-6",
+      title: "Plan Teléfono e Internet Celular",
+      description: "Servicios de comunicación móvil.",
+      amount: 45,
+      type: "EGRESOS",
+      category: "Familiar",
+      date: "2026-05-22",
+      created_at: "2026-05-22T08:15:00.000Z"
+    },
+    {
+      id: "tx-7",
+      title: "Venta de Licencia de Software",
+      description: "Cobro recurrente por licenciamiento de microservicio.",
+      amount: 850,
+      type: "INGRESOS",
+      category: "Negocio",
+      date: "2026-05-25",
+      created_at: "2026-05-25T11:00:00.000Z"
+    }
+  ]
+};
+
+// Leer finanzas de JSON
+function readFinances(): { categories: string[]; transactions: FinanceTransaction[] } {
+  try {
+    if (fs.existsSync(FINANCES_FILE)) {
+      const data = fs.readFileSync(FINANCES_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error leyendo archivo de finanzas:", error);
+  }
+  // Crear archivo inicial si no existe
+  writeFinances(defaultFinances);
+  return defaultFinances as any;
+}
+
+// Escribir finanzas a JSON
+function writeFinances(data: { categories: string[]; transactions: FinanceTransaction[] }): void {
+  try {
+    fs.writeFileSync(FINANCES_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error escribiendo archivo de finanzas:", error);
+  }
+}
+
+// 1. Obtener todas las finanzas (transacciones y categorías)
+app.get("/api/finances", (req, res) => {
+  const data = readFinances();
+  res.json(data);
+});
+
+// 2. Crear una nueva transacción (ingreso, egreso u obligación)
+app.post("/api/finances/transactions", (req, res) => {
+  const { title, description, amount, type, category, date, due_date, status } = req.body;
+  
+  if (!title || !amount || !type || !category || !date) {
+    return res.status(400).json({ error: "Faltan campos mandatorios (título, monto, tipo, categoría, fecha)" });
+  }
+
+  const data = readFinances();
+  const newTx: FinanceTransaction = {
+    id: `tx-${Math.floor(1000 + Math.random() * 9000)}`,
+    title,
+    description: description || "",
+    amount: parseFloat(amount),
+    type,
+    category,
+    date,
+    due_date: due_date || undefined,
+    status: type === "OBLIGACIONES" ? (status || "PENDIENTE") : undefined,
+    created_at: new Date().toISOString()
+  };
+
+  data.transactions.unshift(newTx);
+  writeFinances(data);
+  res.status(201).json(newTx);
+});
+
+// 3. Modificar una transacción (editar campos o pagar obligación)
+app.patch("/api/finances/transactions/:id", (req, res) => {
+  const { id } = req.params;
+  const { title, description, amount, type, category, date, due_date, status } = req.body;
+  
+  const data = readFinances();
+  const txIndex = data.transactions.findIndex(t => t.id === id);
+
+  if (txIndex === -1) {
+    return res.status(404).json({ error: "Transacción no encontrada" });
+  }
+
+  const tx = data.transactions[txIndex];
+
+  if (title !== undefined) tx.title = title;
+  if (description !== undefined) tx.description = description;
+  if (amount !== undefined) tx.amount = parseFloat(amount);
+  if (type !== undefined) tx.type = type;
+  if (category !== undefined) tx.category = category;
+  if (date !== undefined) tx.date = date;
+  if (due_date !== undefined) tx.due_date = due_date;
+  
+  if (status !== undefined) {
+    tx.status = status;
+    // Si marcamos una obligación como PAGADO, de manera opcional podemos registrarla también como un egreso real
+    // Pero lo mantendremos como tipo OBLIGACIÓN con estatuto PAGADO para no duplicar, lo cual es muy transparente.
+  }
+
+  data.transactions[txIndex] = tx;
+  writeFinances(data);
+  res.json(tx);
+});
+
+// 4. Eliminar una transacción
+app.delete("/api/finances/transactions/:id", (req, res) => {
+  const { id } = req.params;
+  const data = readFinances();
+  const initialLen = data.transactions.length;
+  data.transactions = data.transactions.filter(t => t.id !== id);
+
+  if (data.transactions.length === initialLen) {
+    return res.status(404).json({ error: "Transacción no localizada" });
+  }
+
+  writeFinances(data);
+  res.json({ message: "Transacción eliminada con éxito", id });
+});
+
+// 5. Crear una nueva categoría personalizada
+app.post("/api/finances/categories", (req, res) => {
+  const { categoryName } = req.body;
+  
+  if (!categoryName) {
+    return res.status(400).json({ error: "El nombre de la categoría es mandatorio" });
+  }
+
+  const cleanName = categoryName.trim();
+  const data = readFinances();
+
+  if (data.categories.includes(cleanName)) {
+    return res.status(400).json({ error: "Esta categoría ya existe" });
+  }
+
+  data.categories.push(cleanName);
+  writeFinances(data);
+  res.status(201).json({ categories: data.categories });
+});
+
+// 6. Eliminar una categoría personalizada
+app.delete("/api/finances/categories/:name", (req, res) => {
+  const { name } = req.params;
+  const data = readFinances();
+  
+  const initialLen = data.categories.length;
+  data.categories = data.categories.filter(c => c !== name);
+
+  if (data.categories.length === initialLen) {
+    return res.status(404).json({ error: "Categoría no localizada" });
+  }
+
+  writeFinances(data);
+  res.json({ message: "Categoría eliminada con éxito", categories: data.categories });
+});
+
 
 // === INTEGRACIÓN DE VITE / PRODUCCIÓN ===
 async function start() {

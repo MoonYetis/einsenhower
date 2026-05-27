@@ -273,13 +273,184 @@ export default function App() {
   // Estados de Sincronización y Respaldo Físico para celulares y sobremesa
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal
-  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard">("dashboard");
+  // Vistas inteligentes adicionales: Matriz Eisenhower, Life-Work Balance, Bitácora Semanal, Finanzas Colectivas
+  const [activeView, setActiveView] = useState<"matrix" | "analytics" | "logbook" | "dashboard" | "finances">("dashboard");
   const [weeklyCommentary, setWeeklyCommentary] = useState<string>(() => {
     return localStorage.getItem("weekly_commentary") || "Esta semana ha estado enfocada en optimizar el core de nuestra arquitectura y balancear los compromisos familiares clave para desconectar correctamente.";
   });
   const [showReportModal, setShowReportModal] = useState(false);
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
+
+  // Interfaces para la sección de Finanzas Inteligentes
+  interface FinanceTransactionSim {
+    id: string;
+    title: string;
+    description: string;
+    amount: number;
+    type: "INGRESOS" | "EGRESOS" | "OBLIGACIONES";
+    category: string;
+    date: string; // YYYY-MM-DD
+    due_date?: string;
+    status?: "PENDIENTE" | "PAGADO";
+    created_at: string;
+  }
+
+  // Estados de Finanzas Colectivas
+  const [financeTransactions, setFinanceTransactions] = useState<FinanceTransactionSim[]>([]);
+  const [financeCategories, setFinanceCategories] = useState<string[]>(["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas", "Servicios", "Impuestos"]);
+  const [selectedFinanceMonth, setSelectedFinanceMonth] = useState<string>("2026-05"); // Año-Mes por defecto para el sismógrafo financiero
+  const [selectedFinanceCategoryFilter, setSelectedFinanceCategoryFilter] = useState<string>("TODAS");
+  const [selectedFinanceTypeFilter, setSelectedFinanceTypeFilter] = useState<"TODAS" | "INGRESOS" | "EGRESOS" | "OBLIGACIONES">("TODAS");
+  const [financeSearchQuery, setFinanceSearchQuery] = useState("");
+
+  // Formulario de Transacción Nueva
+  const [newTxTitle, setNewTxTitle] = useState("");
+  const [newTxDescription, setNewTxDescription] = useState("");
+  const [newTxAmount, setNewTxAmount] = useState("");
+  const [newTxType, setNewTxType] = useState<"INGRESOS" | "EGRESOS" | "OBLIGACIONES">("INGRESOS");
+  const [newTxCategory, setNewTxCategory] = useState("Negocio");
+  const [newTxDate, setNewTxDate] = useState("2026-05-27");
+  const [newTxDueDate, setNewTxDueDate] = useState("2026-05-27");
+  const [showAddTxCard, setShowAddTxCard] = useState(false);
+
+  // Formulario de Categorías Personalizadas
+  const [newCustomCategoryInput, setNewCustomCategoryInput] = useState("");
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+
+  // Derived state for filtered finance transactions
+  const filteredTxs = financeTransactions.filter(tx => {
+    const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
+    const matchesMonth = formatMonthAndYearSim(tx.date) === selectedFinanceMonth;
+    const matchesCategory = selectedFinanceCategoryFilter === "TODAS" || tx.category === selectedFinanceCategoryFilter;
+    const matchesType = selectedFinanceTypeFilter === "TODAS" || tx.type === selectedFinanceTypeFilter;
+    
+    const query = financeSearchQuery.toLowerCase().trim();
+    const matchesSearch = !query || 
+      tx.title.toLowerCase().includes(query) || 
+      (tx.description && tx.description.toLowerCase().includes(query)) ||
+      tx.category.toLowerCase().includes(query);
+
+    return matchesMonth && matchesCategory && matchesType && matchesSearch;
+  });
+
+  // Funciones de API de Finanzas Colectivas
+  const handleAddFinanceTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTxTitle.trim() || !newTxAmount || !newTxCategory || !newTxDate) {
+      addLog("⚠️ ERROR: Faltan campos obligatorios para registrar la transacción.", "warn");
+      return;
+    }
+    try {
+      const res = await fetch("/api/finances/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTxTitle,
+          description: newTxDescription,
+          amount: parseFloat(newTxAmount),
+          type: newTxType,
+          category: newTxCategory,
+          date: newTxDate,
+          due_date: newTxType === "OBLIGACIONES" ? newTxDueDate : undefined,
+          status: newTxType === "OBLIGACIONES" ? "PENDIENTE" : undefined
+        })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setFinanceTransactions(prev => [created, ...prev]);
+        addLog(`💵 FINANZAS: Registrado nuevo ${newTxType.toLowerCase()} - ${newTxTitle} ($${newTxAmount})`, "success");
+        // Reset campos
+        setNewTxTitle("");
+        setNewTxDescription("");
+        setNewTxAmount("");
+        setShowAddTxCard(false);
+      }
+    } catch (err) {
+      console.error(err);
+      addLog("❌ ERROR: No se pudo salvar la transacción en el servidor.", "error");
+    }
+  };
+
+  const handleDeleteFinanceTransaction = async (id: string, title: string) => {
+    try {
+      const res = await fetch(`/api/finances/transactions/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setFinanceTransactions(prev => prev.filter(t => t.id !== id));
+        addLog(`🗑️ FINANZAS: Eliminada transacción - ${title}`, "warn");
+      }
+    } catch (err) {
+      console.error(err);
+      addLog("❌ ERROR: No se pudo eliminar la transacción.", "error");
+    }
+  };
+
+  const handleToggleObligationStatus = async (id: string, currentStatus: "PENDIENTE" | "PAGADO", title: string) => {
+    const nextStatus = currentStatus === "PENDIENTE" ? "PAGADO" : "PENDIENTE";
+    try {
+      const res = await fetch(`/api/finances/transactions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setFinanceTransactions(prev => prev.map(t => t.id === id ? updated : t));
+        addLog(`⚙️ OBLIGACIÓN: ${title} marcada como ${nextStatus === "PAGADO" ? "PAGADA ✔️" : "PENDIENTE ⏳"}`, "success");
+      }
+    } catch (err) {
+      console.error(err);
+      addLog("❌ ERROR: No se pudo actualizar el estado de la obligación.", "error");
+    }
+  };
+
+  const handleAddCustomCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomCategoryInput.trim()) return;
+    try {
+      const res = await fetch("/api/finances/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryName: newCustomCategoryInput })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFinanceCategories(data.categories);
+        addLog(`🏷️ CATEGORÍA FINANCIERA: Creada categoría personalizada - ${newCustomCategoryInput}`, "success");
+        setNewCustomCategoryInput("");
+        setShowAddCategoryForm(false);
+        // Seleccionar automáticamente la nueva categoría en el dropdown
+        setNewTxCategory(newCustomCategoryInput);
+      } else {
+        const errData = await res.json();
+        addLog(`⚠️ ERROR: ${errData.error || "No se pudo crear la categoría."}`, "warn");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCustomCategory = async (catName: string) => {
+    try {
+      const res = await fetch(`/api/finances/categories/${encodeURIComponent(catName)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFinanceCategories(data.categories);
+        addLog(`🗑️ CATEGORÍA FINANCIERA: Eliminada categoría - ${catName}`, "warn");
+        if (selectedFinanceCategoryFilter === catName) {
+          setSelectedFinanceCategoryFilter("TODAS");
+        }
+        if (newTxCategory === catName) {
+          setNewTxCategory(data.categories[0] || "General");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Consola de Telemetría y Actividades en tiempo real
   const [consoleLogs, setConsoleLogs] = useState<{ id: string; time: string; text: string; type: "info" | "success" | "warn" | "error" | "telemetry" }[]>(() => {
@@ -513,7 +684,20 @@ export default function App() {
         console.warn("Fallo de API, usando fallback en memoria local de React:", err);
       }
     };
+    const fetchFinances = async () => {
+      try {
+        const res = await fetch("/api/finances");
+        if (res.ok) {
+          const data = await res.json();
+          setFinanceTransactions(data.transactions || []);
+          setFinanceCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.warn("Fallo de API de finanzas, usando fallback en memoria: ", err);
+      }
+    };
     fetchTasks();
+    fetchFinances();
   }, []);
 
   // Estado para crear nuevas tareas interactivas directamente en el tablero
@@ -1578,6 +1762,17 @@ services:
             >
               <Award className="w-3.5 h-3.5" />
               Logros & Reporte Semanal
+            </button>
+            <button
+              onClick={() => setActiveView("finances")}
+              className={`flex-1 min-w-[130px] py-2.5 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeView === "finances"
+                  ? "bg-slate-900 border border-slate-950 text-white shadow font-black scale-[1.01]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+              Finanzas Colectivas
             </button>
           </div>
 
@@ -3334,6 +3529,704 @@ services:
                 </div>
 
               </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              VISTA DE GESTIÓN Y FINANZAS COLECTIVAS (EMPRESA & FAMILIA)
+              ======================================================== */}
+          {activeView === "finances" && (
+            <div className="space-y-6 animate-fade-in font-sans select-none">
+              
+              {/* Encabezado Principal de Control Financiero */}
+              <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-mono text-xs font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                    SISMÓGRAFO DE BALANCES COLECTIVOS
+                  </h3>
+                  <h4 className="font-black text-lg text-slate-900 tracking-tight mt-1">
+                    Control de Ingresos, Egresos y Obligaciones Mensuales
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-xl leading-relaxed mt-1">
+                    Diseñado para separar de forma inteligente tus cuentas de **Negocio** y **Familiar**, consolidando obligaciones pendientes, histórico de gastos y análisis del flujo de caja.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShowAddTxCard(!showAddTxCard);
+                      if (showAddCategoryForm) setShowAddCategoryForm(false);
+                    }}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border ${
+                      showAddTxCard 
+                        ? "bg-slate-900 border-slate-950 text-white shadow-sm" 
+                        : "bg-white hover:bg-slate-50 border-slate-250 text-slate-700"
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-indigo-505" />
+                    Registrar Transacción
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowAddCategoryForm(!showAddCategoryForm);
+                      if (showAddTxCard) setShowAddTxCard(false);
+                    }}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border ${
+                      showAddCategoryForm 
+                        ? "bg-slate-900 border-slate-950 text-white shadow-sm" 
+                        : "bg-white hover:bg-slate-50 border-slate-250 text-slate-700"
+                    }`}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    Categorías ({financeCategories.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* BARRA DE NAVEGACIÓN Y FILTRADO MENSUAL DETALLADO */}
+              <div className="bg-slate-100/80 border border-slate-250 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                
+                {/* 1. Selector de Mes */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-mono text-[10px] uppercase font-black text-slate-400">MES CONSULTADO:</span>
+                  <select
+                    value={selectedFinanceMonth}
+                    onChange={(e) => setSelectedFinanceMonth(e.target.value)}
+                    className="p-1 px-2.5 bg-white border border-slate-300 rounded-md font-mono font-bold text-slate-700 focus:outline-none focus:border-indigo-600 cursor-pointer text-xs"
+                  >
+                    {(() => {
+                      const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
+                      const uniqueMonths = Array.from(new Set([
+                        "2026-05", "2026-06", "2026-04",
+                        ...financeTransactions.map(t => formatMonthAndYearSim(t.date))
+                      ])).sort().reverse();
+                      return uniqueMonths.map(m => {
+                        const [yr, mn] = m.split("-");
+                        const monthsSpanishSim: Record<string, string> = {
+                          "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril", "05": "Mayo", "06": "Junio",
+                          "07": "Julio", "08": "Agosto", "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre"
+                        };
+                        return (
+                          <option key={m} value={m}>
+                            {monthsSpanishSim[mn] || mn} {yr}
+                          </option>
+                        );
+                      });
+                    })()}
+                  </select>
+                </div>
+
+                {/* 2. Filtros Cruzados Rápidos */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase font-black text-slate-400">TIPO:</span>
+                  <div className="flex bg-white p-0.5 rounded-lg border border-slate-250">
+                    {(["TODAS", "INGRESOS", "EGRESOS", "OBLIGACIONES"] as const).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setSelectedFinanceTypeFilter(t)}
+                        className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                          selectedFinanceTypeFilter === t
+                            ? "bg-slate-900 text-white font-black"
+                            : "text-slate-500 hover:text-slate-900"
+                        }`}
+                      >
+                        {t === "TODAS" ? "Todo" : t}
+                      </button>
+                    ))}
+                  </div>
+
+                  <span className="font-mono text-[10px] uppercase font-black text-slate-400 ml-2">ORIGEN:</span>
+                  <select
+                    value={selectedFinanceCategoryFilter}
+                    onChange={(e) => setSelectedFinanceCategoryFilter(e.target.value)}
+                    className="p-1 px-2.5 bg-white border border-slate-300 rounded-md font-mono text-slate-700 focus:outline-none cursor-pointer text-[11px]"
+                  >
+                    <option value="TODAS">TODAS LAS CATEGORÍAS</option>
+                    {financeCategories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Buscador */}
+                <div className="w-full sm:w-60">
+                  <input
+                    type="text"
+                    value={financeSearchQuery}
+                    onChange={(e) => setFinanceSearchQuery(e.target.value)}
+                    placeholder="Buscar por concepto o detalle..."
+                    className="w-full text-xs p-1.5 px-3 bg-white border border-slate-250 rounded-lg focus:outline-none focus:border-slate-900"
+                  />
+                </div>
+              </div>
+
+              {/* CUADROS GENERALES DE METRICAS MACRO (KPI CARDS DYNAMIC FOR THE MONTH) */}
+              {(() => {
+                const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
+                const monthlyTxs = financeTransactions.filter(tx => formatMonthAndYearSim(tx.date) === selectedFinanceMonth);
+                
+                const totalIncomes = monthlyTxs
+                  .filter(tx => tx.type === "INGRESOS")
+                  .reduce((sum, tx) => sum + tx.amount, 0);
+
+                const totalExpenses = monthlyTxs
+                  .filter(tx => tx.type === "EGRESOS")
+                  .reduce((sum, tx) => sum + tx.amount, 0);
+
+                const totalObligationsPending = monthlyTxs
+                  .filter(tx => tx.type === "OBLIGACIONES" && tx.status === "PENDIENTE")
+                  .reduce((sum, tx) => sum + tx.amount, 0);
+
+                const totalObligationsPaid = monthlyTxs
+                  .filter(tx => tx.type === "OBLIGACIONES" && tx.status === "PAGADO")
+                  .reduce((sum, tx) => sum + tx.amount, 0);
+
+                // El Balance Neto para caja libre de operaciones del mes: Ingresos - Gastos Efectuados - Obligaciones ya liquidadas
+                const netBalance = totalIncomes - totalExpenses - totalObligationsPaid;
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+                    
+                    {/* Card 1: Ingresos reales del mes */}
+                    <div className="bg-white border border-emerald-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider">
+                          🟢 INGRESOS CORRIENTES
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 font-extrabold">
+                          + Flujo Caja
+                        </span>
+                      </div>
+                      <div className="mt-2.5">
+                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                          ${totalIncomes.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
+                          <span>Registros de entradas en este periodo del mes.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Egresos / Gastos cursados */}
+                    <div className="bg-white border border-rose-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider">
+                          🔴 EGRESOS Y GASTOS
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100 font-extrabold">
+                          - Gastado
+                        </span>
+                      </div>
+                      <div className="mt-2.5">
+                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                          ${totalExpenses.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
+                          <span>Excluye obligaciones pendientes de cobro.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Compromisos y obligaciones fijas */}
+                    <div className="bg-white border border-amber-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider">
+                          ⚠️ COMPROMISOS Fijos
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100 font-extrabold">
+                          Obligaciones
+                        </span>
+                      </div>
+                      <div className="mt-2.5">
+                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                          ${(totalObligationsPending + totalObligationsPaid).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px]">
+                          <span className="text-amber-700 bg-amber-50 px-1 rounded font-extrabold">
+                            Pendiente: ${totalObligationsPending}
+                          </span>
+                          <span className="text-emerald-700 bg-emerald-50 px-1 rounded font-extrabold">
+                            Pagado: ${totalObligationsPaid}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Balance Neto / Margen libre */}
+                    <div className={`p-4 rounded-xl border flex flex-col justify-between shadow-xxs ${
+                      netBalance >= 0 
+                        ? "bg-slate-900 border-slate-950 text-white" 
+                        : "bg-rose-950 border-rose-900 text-white"
+                    }`}>
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                          ⚖️ FLUJO NETO DISPONIBLE
+                        </span>
+                        <span className="text-[9px] font-mono font-bold text-slate-200 bg-white/10 px-1.5 py-0.2 rounded uppercase font-black">
+                          {netBalance >= 0 ? "Excedente" : "Déficit"}
+                        </span>
+                      </div>
+                      <div className="mt-2.5">
+                        <span className={`text-2xl font-black tracking-tight block ${netBalance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          ${netBalance.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <div className="text-[9px] text-slate-400 mt-1 font-mono">
+                          <span>Ingresos restando Gastos y Obligaciones pagadas.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })()}
+
+              {/* DISEÑO EN DOS COLUMNAS - FORMULARIOS / ESTADÍSTICAS E HISTORIAL INTEGRADO */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                
+                {/* Lado Izquierdo: Formularios Auxiliares (Añadir Transacción, Categorías y Visual de Distribución) */}
+                <div className="lg:col-span-5 space-y-5">
+                  
+                  {/* Formulario 1: Registrar Nueva Transacción (Ingreso/Gasto/Obligación) */}
+                  {showAddTxCard && (
+                    <div className="bg-white border-2 border-slate-900 p-5 rounded-xl shadow-md space-y-4 animate-slide-in">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                          💼 REGISTRAR TRANSACCIÓN FINANCIERA
+                        </h4>
+                        <button
+                          onClick={() => setShowAddTxCard(false)}
+                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleAddFinanceTransaction} className="space-y-3.5 text-xs text-left">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                              Tipo de Transacción:
+                            </label>
+                            <select
+                              value={newTxType}
+                              onChange={(e) => {
+                                const selectedType = e.target.value as any;
+                                setNewTxType(selectedType);
+                                if (selectedType === "OBLIGACIONES") {
+                                  setNewTxCategory("Servicios");
+                                }
+                              }}
+                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans bg-white font-bold text-slate-850"
+                            >
+                              <option value="INGRESOS">🟢 Ingreso (+)</option>
+                              <option value="EGRESOS">🔴 Egreso (-)</option>
+                              <option value="OBLIGACIONES">⏳ Obligación / Compromiso</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                              monto en USD ($):
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              step="0.01"
+                              min="0.01"
+                              value={newTxAmount}
+                              onChange={(e) => setNewTxAmount(e.target.value)}
+                              placeholder="0.00"
+                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-mono font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                            Detalle / Concepto:
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={newTxTitle}
+                            onChange={(e) => setNewTxTitle(e.target.value)}
+                            placeholder="Ej. Hosting Servidores, Supermercado, Factura SoftDev"
+                            className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                            Descripción Auxiliar (Opcional):
+                          </label>
+                          <textarea
+                            value={newTxDescription}
+                            onChange={(e) => setNewTxDescription(e.target.value)}
+                            rows={2}
+                            placeholder="Notas referenciales importantes..."
+                            className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                              Categoría / Segmento:
+                            </label>
+                            <select
+                              value={newTxCategory}
+                              onChange={(e) => setNewTxCategory(e.target.value)}
+                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans bg-white"
+                            >
+                              {financeCategories.map(cat => (
+                                <option key={cat} value={cat}>
+                                  {cat}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                              Fecha de Ejecución:
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              value={newTxDate}
+                              onChange={(e) => setNewTxDate(e.target.value)}
+                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-mono bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        {newTxType === "OBLIGACIONES" && (
+                          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2 animate-fade-in animate-duration-200">
+                            <span className="block text-[9px] font-mono font-black uppercase tracking-wider text-amber-800">
+                              Configuración de la Obligación Bancaria / Proveedor:
+                            </span>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                                Fecha Límite de Pago (Plazo):
+                              </label>
+                              <input
+                                type="date"
+                                required
+                                value={newTxDueDate}
+                                onChange={(e) => setNewTxDueDate(e.target.value)}
+                                className="w-full text-xs p-2 bg-white border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-slate-200 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowAddTxCard(false)}
+                            className="px-3 py-1.5 border border-slate-250 text-slate-600 rounded text-xs"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-mono font-bold uppercase rounded text-xs transition-all shadow-sm cursor-pointer"
+                          >
+                            ✓ Registrar en Servidor
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Formulario 2: Crear Categorías Personalizadas */}
+                  {showAddCategoryForm && (
+                    <div className="bg-white border-2 border-slate-900 p-5 rounded-xl shadow-md space-y-4 animate-slide-in">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                          🏷️ GESTIÓN DE CATEGORÍAS FINANCIERAS
+                        </h4>
+                        <button
+                          onClick={() => setShowAddCategoryForm(false)}
+                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleAddCustomCategory} className="space-y-4 text-xs text-left">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={newCustomCategoryInput}
+                            onChange={(e) => setNewCustomCategoryInput(e.target.value)}
+                            placeholder="Nombre de la nueva categoría (ej. Logística)"
+                            className="flex-1 text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 font-mono font-bold uppercase cursor-pointer"
+                          >
+                            Crear
+                          </button>
+                        </div>
+
+                        {/* Listado de categorías activas con oportunidad de eliminar si es personalizada */}
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                            Categorías del Sistema y Propias:
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {financeCategories.map(cat => {
+                              const isSystem = ["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].includes(cat);
+                              return (
+                                <div key={cat} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono">
+                                  <span className="font-bold text-slate-700 uppercase tracking-tight truncate mr-1">
+                                    {cat} {isSystem && "🔒"}
+                                  </span>
+                                  {!isSystem && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCustomCategory(cat)}
+                                      className="text-rose-500 hover:text-rose-700 pr-1 hover:scale-105"
+                                      title="Eliminar categoría personalizada"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-200 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCategoryForm(false)}
+                            className="px-3 py-1.5 border border-slate-250 text-slate-650 rounded text-xs"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* DISEÑO ESTÉTICO DE DISTRIBUCIÓN FLUIDA (EMPRESA vs FAMILIA) */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4 text-left">
+                    <div>
+                      <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                        ⚖️ BALANCE COCOON: NEGOCIO vs FAMILIARES
+                      </h4>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Análisis porcentual de gastos y obligaciones registrados en el mes de **{selectedFinanceMonth}**.
+                      </p>
+                    </div>
+
+                    {(() => {
+                      const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
+                      const currentMonthTxs = financeTransactions.filter(tx => 
+                        formatMonthAndYearSim(tx.date) === selectedFinanceMonth && 
+                        (tx.type === "EGRESOS" || (tx.type === "OBLIGACIONES" && tx.status === "PAGADO"))
+                      );
+
+                      const negocioSpent = currentMonthTxs.filter(t => t.category === "Negocio").reduce((sum, t) => sum + t.amount, 0);
+                      const familiarSpent = currentMonthTxs.filter(t => t.category === "Familiar").reduce((sum, t) => sum + t.amount, 0);
+                      const othersSpent = currentMonthTxs.filter(t => t.category !== "Negocio" && t.category !== "Familiar").reduce((sum, t) => sum + t.amount, 0);
+                      
+                      const totalSpent = negocioSpent + familiarSpent + othersSpent;
+
+                      const negocioPct = totalSpent > 0 ? Math.round((negocioSpent / totalSpent) * 100) : 0;
+                      const familiarPct = totalSpent > 0 ? Math.round((familiarSpent / totalSpent) * 100) : 0;
+                      const othersPct = totalSpent > 0 ? 100 - negocioPct - familiarPct : 0;
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="h-4 w-full bg-slate-100 rounded-full flex overflow-hidden shadow-2xs">
+                            {negocioPct > 0 && (
+                              <div className="bg-indigo-650 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${negocioPct}%` }} title={`Negocio: ${negocioPct}%`}>
+                                {negocioPct}%
+                              </div>
+                            )}
+                            {familiarPct > 0 && (
+                              <div className="bg-emerald-500 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${familiarPct}%` }} title={`Familia: ${familiarPct}%`}>
+                                {familiarPct}%
+                              </div>
+                            )}
+                            {othersPct > 0 && (
+                              <div className="bg-amber-400 text-slate-900 h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${othersPct}%` }} title={`Otras categorías: ${othersPct}%`}>
+                                {othersPct}%
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
+                            <div className="border bg-indigo-50/20 border-indigo-100 p-1.5 rounded-lg text-center">
+                              <span className="text-[8px] text-slate-400 block uppercase font-bold">NEGOCIO</span>
+                              <span className="font-extrabold text-indigo-700 block mt-0.5">${negocioSpent}</span>
+                            </div>
+                            <div className="border bg-emerald-50/20 border-emerald-100 p-1.5 rounded-lg text-center">
+                              <span className="text-[8px] text-slate-400 block uppercase font-bold">FAMILIAR</span>
+                              <span className="font-extrabold text-emerald-700 block mt-0.5">${familiarSpent}</span>
+                            </div>
+                            <div className="border bg-amber-50/20 border-amber-100 p-1.5 rounded-lg text-center">
+                              <span className="text-[8px] text-slate-400 block uppercase font-bold">OTROS</span>
+                              <span className="font-extrabold text-amber-700 block mt-0.5">${othersSpent}</span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-[9px] text-slate-400 leading-tight">
+                            * El gráfico mide gastos corrientes efectuados + deudas fijos marcadas ya como <b>PAGADAS</b>. Es ideal calibrar mensualmente para no sofocar tu caja familiar.
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                </div>
+
+                {/* Lado Derecho: Historial / Registro Mensual Sincronizado */}
+                <div className="lg:col-span-7 bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4 flex flex-col justify-between">
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        📑 TRANSACCIONES EN EL MES ({filteredTxs.length})
+                      </h4>
+                      <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-500 py-0.5 px-2 rounded-md uppercase">
+                        Real-Time SQL
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                      {filteredTxs.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 text-xs font-mono border border-dashed border-slate-200 rounded-lg space-y-2">
+                          <div>📭 Ninguna entrada registrada.</div>
+                          <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
+                            No se encontraron ingresos, egresos ni obligaciones para el mes de {selectedFinanceMonth} con la categoría o filtros cruzados activos.
+                          </p>
+                        </div>
+                      ) : (
+                        filteredTxs.map(tx => {
+                          const isObligation = tx.type === "OBLIGACIONES";
+                          const isIncome = tx.type === "INGRESOS";
+                          
+                          return (
+                            <div 
+                              key={tx.id} 
+                              className={`p-3 bg-white border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left transition-all hover:border-slate-350 shadow-xxs ${
+                                isObligation && tx.status === "PENDIENTE" ? "border-l-4 border-l-amber-400" : ""
+                              } ${
+                                isObligation && tx.status === "PAGADO" ? "border-l-4 border-l-emerald-400" : ""
+                              }`}
+                            >
+                              <div className="space-y-1 overflow-hidden">
+                                <div className="flex items-center flex-wrap gap-1.5">
+                                  <span className={`text-[8px] font-mono px-1.5 py-0.2 rounded font-black uppercase tracking-wider ${
+                                    isIncome
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                      : tx.type === "EGRESOS"
+                                      ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                      : "bg-amber-50 text-amber-700 border border-amber-100"
+                                  }`}>
+                                    {isIncome ? "Ingreso" : tx.type === "EGRESOS" ? "Egreso" : "Obligación"}
+                                  </span>
+
+                                  <span className="text-[9px] font-mono bg-slate-100 text-slate-600 border border-slate-200 px-1 py-0.2 rounded uppercase font-bold">
+                                    {tx.category}
+                                  </span>
+
+                                  <span className="text-[8px] font-mono text-slate-400 block">
+                                    📅 {tx.date}
+                                  </span>
+                                </div>
+
+                                <h4 className="text-[11px] font-black text-slate-800 leading-tight">
+                                  {tx.title}
+                                </h4>
+                                
+                                {tx.description && (
+                                  <p className="text-[10px] text-slate-500 line-clamp-2 max-w-md italic leading-tight">
+                                    "{tx.description}"
+                                  </p>
+                                )}
+
+                                {isObligation && (
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-[8px] font-mono text-slate-400 font-bold uppercase">
+                                      VENCE: {tx.due_date || "Fin de mes"}
+                                    </span>
+                                    <span className={`text-[8px] font-mono font-black uppercase px-1 py-0.2 rounded ${
+                                      tx.status === "PAGADO" 
+                                        ? "bg-emerald-100 text-emerald-800" 
+                                        : "bg-amber-100 text-amber-800 animate-pulse"
+                                    }`}>
+                                      {tx.status === "PAGADO" ? "✔️ PAGADA" : "⏳ PENDIENTE"}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                <div className="text-right font-mono">
+                                  <span className={`text-sm font-black block ${
+                                    isIncome 
+                                      ? "text-emerald-600" 
+                                      : "text-slate-800"
+                                  }`}>
+                                    {isIncome ? "+ " : "- "}${tx.amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 select-none">
+                                  {isObligation && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleObligationStatus(tx.id, tx.status || "PENDIENTE", tx.title)}
+                                      className={`text-[8px] font-mono font-bold uppercase px-2 py-1 rounded cursor-pointer border tracking-wider transition-all scale-[0.98] ${
+                                        tx.status === "PAGADO"
+                                          ? "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                                          : "bg-emerald-650 hover:bg-emerald-700 text-white border-emerald-700 shadow-xxs animate-pulse"
+                                      }`}
+                                      title={tx.status === "PAGADO" ? "Marcar como pendiente" : "Marcar como cancelado/pagado"}
+                                    >
+                                      {tx.status === "PAGADO" ? "↩️ Revertir" : "✔️ Pagar Deuda"}
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFinanceTransaction(tx.id, tx.title)}
+                                    className="p-1 px-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-md border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+                                    title="Eliminar registro"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Leyenda de Seguridad */}
+                  <div className="pt-3 border-t border-slate-150 text-[10px] text-slate-400 font-mono text-left bg-slate-50 p-2.5 rounded-lg">
+                    🛡️ CONEXIÓN CRIPTOGRÁFICA: Todos los flujos se persisten automáticamente en el servidor y son consolidados en tu registro local asíncronamente en cada acción.
+                  </div>
+
+                </div>
+
+              </div>
+
             </div>
           )}
 
