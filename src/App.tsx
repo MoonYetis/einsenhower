@@ -297,18 +297,19 @@ export default function App() {
 
   // Estados de Finanzas Colectivas
   const [financeTransactions, setFinanceTransactions] = useState<FinanceTransactionSim[]>([]);
-  const [financeCategories, setFinanceCategories] = useState<string[]>(["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas", "Servicios", "Impuestos"]);
+  const [financeCategories, setFinanceCategories] = useState<string[]>(["Familiar", "Vinannet", "Vinanmerch", "Airbnb"]);
   const [selectedFinanceMonth, setSelectedFinanceMonth] = useState<string>("2026-05"); // Año-Mes por defecto para el sismógrafo financiero
-  const [selectedFinanceCategoryFilter, setSelectedFinanceCategoryFilter] = useState<string>("TODAS");
+  const [selectedFinanceWorkspace, setSelectedFinanceWorkspace] = useState<string>("Familiar"); // Cuenta independiente activa
   const [selectedFinanceTypeFilter, setSelectedFinanceTypeFilter] = useState<"TODAS" | "INGRESOS" | "EGRESOS" | "OBLIGACIONES">("TODAS");
   const [financeSearchQuery, setFinanceSearchQuery] = useState("");
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
 
   // Formulario de Transacción Nueva
   const [newTxTitle, setNewTxTitle] = useState("");
   const [newTxDescription, setNewTxDescription] = useState("");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxType, setNewTxType] = useState<"INGRESOS" | "EGRESOS" | "OBLIGACIONES">("INGRESOS");
-  const [newTxCategory, setNewTxCategory] = useState("Negocio");
+  const [newTxCategory, setNewTxCategory] = useState("Familiar");
   const [newTxDate, setNewTxDate] = useState("2026-05-27");
   const [newTxDueDate, setNewTxDueDate] = useState("2026-05-27");
   const [showAddTxCard, setShowAddTxCard] = useState(false);
@@ -321,14 +322,13 @@ export default function App() {
   const filteredTxs = financeTransactions.filter(tx => {
     const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
     const matchesMonth = formatMonthAndYearSim(tx.date) === selectedFinanceMonth;
-    const matchesCategory = selectedFinanceCategoryFilter === "TODAS" || tx.category === selectedFinanceCategoryFilter;
+    const matchesCategory = tx.category === selectedFinanceWorkspace;
     const matchesType = selectedFinanceTypeFilter === "TODAS" || tx.type === selectedFinanceTypeFilter;
     
     const query = financeSearchQuery.toLowerCase().trim();
     const matchesSearch = !query || 
       tx.title.toLowerCase().includes(query) || 
-      (tx.description && tx.description.toLowerCase().includes(query)) ||
-      tx.category.toLowerCase().includes(query);
+      (tx.description && tx.description.toLowerCase().includes(query));
 
     return matchesMonth && matchesCategory && matchesType && matchesSearch;
   });
@@ -336,7 +336,7 @@ export default function App() {
   // Funciones de API de Finanzas Colectivas
   const handleAddFinanceTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTxTitle.trim() || !newTxAmount || !newTxCategory || !newTxDate) {
+    if (!newTxTitle.trim() || !newTxAmount || !newTxDate) {
       addLog("⚠️ ERROR: Faltan campos obligatorios para registrar la transacción.", "warn");
       return;
     }
@@ -349,7 +349,7 @@ export default function App() {
           description: newTxDescription,
           amount: parseFloat(newTxAmount),
           type: newTxType,
-          category: newTxCategory,
+          category: selectedFinanceWorkspace,
           date: newTxDate,
           due_date: newTxType === "OBLIGACIONES" ? newTxDueDate : undefined,
           status: newTxType === "OBLIGACIONES" ? "PENDIENTE" : undefined
@@ -358,7 +358,7 @@ export default function App() {
       if (res.ok) {
         const created = await res.json();
         setFinanceTransactions(prev => [created, ...prev]);
-        addLog(`💵 FINANZAS: Registrado nuevo ${newTxType.toLowerCase()} - ${newTxTitle} ($${newTxAmount})`, "success");
+        addLog(`💵 FINANZAS: Registrado nuevo ${newTxType.toLowerCase()} en [${selectedFinanceWorkspace}] - ${newTxTitle} ($${newTxAmount})`, "success");
         // Reset campos
         setNewTxTitle("");
         setNewTxDescription("");
@@ -440,8 +440,8 @@ export default function App() {
         const data = await res.json();
         setFinanceCategories(data.categories);
         addLog(`🗑️ CATEGORÍA FINANCIERA: Eliminada categoría - ${catName}`, "warn");
-        if (selectedFinanceCategoryFilter === catName) {
-          setSelectedFinanceCategoryFilter("TODAS");
+        if (selectedFinanceWorkspace === catName) {
+          setSelectedFinanceWorkspace(data.categories[0] || "Familiar");
         }
         if (newTxCategory === catName) {
           setNewTxCategory(data.categories[0] || "General");
@@ -3539,17 +3539,17 @@ services:
             <div className="space-y-6 animate-fade-in font-sans select-none">
               
               {/* Encabezado Principal de Control Financiero */}
-              <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-mono text-xs font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                  <h3 className="font-mono text-xs font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
                     SISMÓGRAFO DE BALANCES COLECTIVOS
                   </h3>
                   <h4 className="font-black text-lg text-slate-900 tracking-tight mt-1">
-                    Control de Ingresos, Egresos y Obligaciones Mensuales
+                    Gestión de Cuentas y Presupuestos Colectivos
                   </h4>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed mt-1">
-                    Diseñado para separar de forma inteligente tus cuentas de **Negocio** y **Familiar**, consolidando obligaciones pendientes, histórico de gastos y análisis del flujo de caja.
+                    Cada categoría financiera funciona de manera <b>150% independiente y aislada</b>. Seleccione una cuenta para operar su propio balance, obligaciones recurrentes e histórico.
                   </p>
                 </div>
 
@@ -3566,7 +3566,7 @@ services:
                     }`}
                   >
                     <Plus className="w-3.5 h-3.5 text-indigo-505" />
-                    Registrar Transacción
+                    Registrar en {selectedFinanceWorkspace}
                   </button>
 
                   <button
@@ -3581,55 +3581,234 @@ services:
                     }`}
                   >
                     <Tag className="w-3.5 h-3.5" />
-                    Categorías ({financeCategories.length})
+                    Crear Cuenta ({financeCategories.length})
                   </button>
                 </div>
               </div>
 
+              {/* TABS DE SELECCIÓN DE CUENTAS INDEPENDIENTES (Espacios de Balance Autónomos) */}
+              <div className="space-y-2">
+                <span className="font-mono text-[10px] uppercase font-black text-slate-400 tracking-wider block">
+                  📂 SELECCIONE UN ÁREA / CUENTA FINANCIERA ACTIVA:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {financeCategories.map(cat => {
+                    const isActive = selectedFinanceWorkspace === cat;
+                    const catTxs = financeTransactions.filter(t => t.category === cat && t.date.substring(0, 7) === selectedFinanceMonth);
+                    const catIncome = catTxs.filter(t => t.type === "INGRESOS").reduce((sum, t) => sum + t.amount, 0);
+                    const catExpense = catTxs.filter(t => t.type === "EGRESOS").reduce((sum, t) => sum + t.amount, 0);
+                    const catOblgPaid = catTxs.filter(t => t.type === "OBLIGACIONES" && t.status === "PAGADO").reduce((sum, t) => sum + t.amount, 0);
+                    const catOblgPending = catTxs.filter(t => t.type === "OBLIGACIONES" && t.status === "PENDIENTE").reduce((sum, t) => sum + t.amount, 0);
+                    const catNet = catIncome - catExpense - catOblgPaid;
+
+                    let emoji = "💼";
+                    let activeColorClass = "bg-slate-900 border-slate-950 text-white scale-[1.01] shadow-md";
+                    let textColor = "text-slate-300";
+                    if (cat === "Familiar") {
+                      emoji = "🏡";
+                      activeColorClass = "bg-emerald-650 border-emerald-850 text-white scale-[1.01] shadow-md";
+                      textColor = "text-emerald-100";
+                    } else if (cat === "Vinannet") {
+                      emoji = "🌐";
+                      activeColorClass = "bg-indigo-650 border-indigo-800 text-white scale-[1.01] shadow-md";
+                      textColor = "text-indigo-150";
+                    } else if (cat === "Vinanmerch") {
+                      emoji = "👕";
+                      activeColorClass = "bg-purple-650 border-purple-850 text-white scale-[1.01] shadow-md";
+                      textColor = "text-purple-100";
+                    } else if (cat === "Airbnb") {
+                      emoji = "🔑";
+                      activeColorClass = "bg-rose-550 border-rose-700 text-white scale-[1.01] shadow-md";
+                      textColor = "text-rose-100";
+                    }
+
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          setSelectedFinanceWorkspace(cat);
+                          setNewTxCategory(cat);
+                        }}
+                        className={`p-3.5 rounded-xl border-2 text-left transition-all flex flex-col justify-between cursor-pointer min-h-[92px] ${
+                          isActive 
+                            ? activeColorClass 
+                            : "bg-white border-slate-200 text-slate-850 hover:border-slate-305 hover:bg-slate-50 shadow-3xs"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xl">{emoji}</span>
+                          <span className={`text-[8px] font-mono font-black uppercase tracking-wider ${isActive ? textColor : "text-slate-400"}`}>
+                            {isActive ? "Activa ●" : "Ver Cuenta"}
+                          </span>
+                        </div>
+                        <div className="mt-2.5">
+                          <span className="text-xs font-extrabold uppercase tracking-tight block truncate max-w-[130px]">{cat}</span>
+                          <span className={`text-[10px] font-mono font-bold block mt-0.5 ${isActive ? "text-white" : catNet >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                            Saldo: ${catNet.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            {catOblgPending > 0 && (
+                              <span className={`ml-1 text-[8.5px] font-black ${isActive ? "text-amber-200" : "text-amber-600 bg-amber-50 px-1 rounded-full text-[7.5px]"}`} title={`${catOblgPending} pendiente`}>
+                                (⏳)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* BARRA DE NAVEGACIÓN Y FILTRADO MENSUAL DETALLADO */}
-              <div className="bg-slate-100/80 border border-slate-250 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="bg-slate-100 border border-slate-250 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
                 
-                {/* 1. Selector de Mes */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-mono text-[10px] uppercase font-black text-slate-400">MES CONSULTADO:</span>
-                  <select
-                    value={selectedFinanceMonth}
-                    onChange={(e) => setSelectedFinanceMonth(e.target.value)}
-                    className="p-1 px-2.5 bg-white border border-slate-300 rounded-md font-mono font-bold text-slate-700 focus:outline-none focus:border-indigo-600 cursor-pointer text-xs"
-                  >
-                    {(() => {
-                      const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
-                      const uniqueMonths = Array.from(new Set([
-                        "2026-05", "2026-06", "2026-04",
-                        ...financeTransactions.map(t => formatMonthAndYearSim(t.date))
-                      ])).sort().reverse();
-                      return uniqueMonths.map(m => {
-                        const [yr, mn] = m.split("-");
-                        const monthsSpanishSim: Record<string, string> = {
-                          "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril", "05": "Mayo", "06": "Junio",
-                          "07": "Julio", "08": "Agosto", "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre"
-                        };
-                        return (
-                          <option key={m} value={m}>
-                            {monthsSpanishSim[mn] || mn} {yr}
-                          </option>
-                        );
-                      });
-                    })()}
-                  </select>
+                {/* 1. Selector de Mes Intuitivo (Arrows + Grid Popover) */}
+                <div className="flex items-center gap-2 shrink-0 select-none">
+                  <span className="font-mono text-[10px] uppercase font-black text-slate-450">PERIODO:</span>
+                  
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200 shadow-3xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [yearStr, monthStr] = selectedFinanceMonth.split("-");
+                        let year = parseInt(yearStr);
+                        let month = parseInt(monthStr);
+                        month--;
+                        if (month < 1) { month = 12; year--; }
+                        setSelectedFinanceMonth(`${year}-${month.toString().padStart(2, '0')}`);
+                      }}
+                      className="p-1 px-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-all cursor-pointer"
+                      title="Mes anterior"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowMonthYearPicker(!showMonthYearPicker)}
+                        className="p-1 px-2.5 hover:bg-slate-50 text-slate-800 rounded-lg font-mono font-black text-[10.5px] uppercase tracking-wider transition-all flex items-center gap-1 text-center"
+                      >
+                        📅 {(() => {
+                          const parts = selectedFinanceMonth.split("-");
+                          const formatMonthsArray = [
+                            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+                          ];
+                          if (parts.length === 2) {
+                            const idx = parseInt(parts[1]) - 1;
+                            return `${formatMonthsArray[idx] || parts[1]} ${parts[0]}`;
+                          }
+                          return selectedFinanceMonth;
+                        })()}
+                        <span className="text-slate-450 text-[8.5px]">▼</span>
+                      </button>
+
+                      {/* Popover de Selección Directa de Mes y Año con Grid */}
+                      {showMonthYearPicker && (
+                        <div className="absolute top-full left-0 mt-2 bg-white border border-slate-350 rounded-xl p-3 shadow-xl z-30 w-56 text-left animate-fade-in animate-duration-150">
+                          {/* Selector de Año */}
+                          <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const [yr, mn] = selectedFinanceMonth.split("-");
+                                setSelectedFinanceMonth(`${parseInt(yr) - 1}-${mn}`);
+                              }}
+                              className="p-1 px-2.5 bg-slate-50 hover:bg-slate-150 text-slate-700 rounded font-bold font-mono text-[10px]"
+                            >
+                              ◀
+                            </button>
+                            <span className="font-mono font-extrabold text-[11px] text-slate-900">
+                              AÑO: {selectedFinanceMonth.substring(0, 4)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const [yr, mn] = selectedFinanceMonth.split("-");
+                                setSelectedFinanceMonth(`${parseInt(yr) + 1}-${mn}`);
+                              }}
+                              className="p-1 px-2.5 bg-slate-50 hover:bg-slate-150 text-slate-700 rounded font-bold font-mono text-[10px]"
+                            >
+                              ▶
+                            </button>
+                          </div>
+
+                          {/* Grid de Meses */}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { v: "01", n: "Ene" }, { v: "02", n: "Feb" }, { v: "03", n: "Mar" },
+                              { v: "04", n: "Abr" }, { v: "05", n: "May" }, { v: "06", n: "Jun" },
+                              { v: "07", n: "Jul" }, { v: "08", n: "Ago" }, { v: "09", n: "Sep" },
+                              { v: "10", n: "Oct" }, { v: "11", n: "Nov" }, { v: "12", n: "Dic" }
+                            ].map((m) => {
+                              const currentYear = selectedFinanceMonth.split("-")[0];
+                              const code = `${currentYear}-${m.v}`;
+                              const isSelected = selectedFinanceMonth === code;
+                              return (
+                                <button
+                                  key={m.v}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedFinanceMonth(code);
+                                    setShowMonthYearPicker(false);
+                                  }}
+                                  className={`p-2 rounded font-mono font-extrabold text-[10px] uppercase transition-all text-center cursor-pointer ${
+                                    isSelected
+                                      ? "bg-emerald-600 text-white shadow-xxs"
+                                      : "bg-slate-50 hover:bg-slate-200 text-slate-750"
+                                  }`}
+                                >
+                                  {m.n}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Botón de Cierre */}
+                          <div className="mt-2 text-center pt-2 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => setShowMonthYearPicker(false)}
+                              className="text-[9px] font-mono font-black uppercase tracking-wider text-slate-400 hover:text-slate-800"
+                            >
+                              Cerrar selector
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [yearStr, monthStr] = selectedFinanceMonth.split("-");
+                        let year = parseInt(yearStr);
+                        let month = parseInt(monthStr);
+                        month++;
+                        if (month > 12) { month = 1; year++; }
+                        setSelectedFinanceMonth(`${year}-${month.toString().padStart(2, '0')}`);
+                      }}
+                      className="p-1 px-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-all cursor-pointer"
+                      title="Mes siguiente"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* 2. Filtros Cruzados Rápidos */}
+                {/* 2. Filtro de Tipo de Transacción de este Workspace */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[10px] uppercase font-black text-slate-400">TIPO:</span>
-                  <div className="flex bg-white p-0.5 rounded-lg border border-slate-250">
+                  <span className="font-mono text-[10px] uppercase font-black text-slate-450">TIPO:</span>
+                  <div className="flex bg-white p-0.5 rounded-lg border border-slate-200">
                     {(["TODAS", "INGRESOS", "EGRESOS", "OBLIGACIONES"] as const).map(t => (
                       <button
                         key={t}
                         onClick={() => setSelectedFinanceTypeFilter(t)}
                         className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer ${
                           selectedFinanceTypeFilter === t
-                            ? "bg-slate-900 text-white font-black"
+                            ? "bg-slate-900 text-white font-black shadow-3xs"
                             : "text-slate-500 hover:text-slate-900"
                         }`}
                       >
@@ -3637,20 +3816,6 @@ services:
                       </button>
                     ))}
                   </div>
-
-                  <span className="font-mono text-[10px] uppercase font-black text-slate-400 ml-2">ORIGEN:</span>
-                  <select
-                    value={selectedFinanceCategoryFilter}
-                    onChange={(e) => setSelectedFinanceCategoryFilter(e.target.value)}
-                    className="p-1 px-2.5 bg-white border border-slate-300 rounded-md font-mono text-slate-700 focus:outline-none cursor-pointer text-[11px]"
-                  >
-                    <option value="TODAS">TODAS LAS CATEGORÍAS</option>
-                    {financeCategories.map(cat => (
-                      <option key={cat} value={cat}>
-                        {cat.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 {/* 3. Buscador */}
@@ -3659,16 +3824,19 @@ services:
                     type="text"
                     value={financeSearchQuery}
                     onChange={(e) => setFinanceSearchQuery(e.target.value)}
-                    placeholder="Buscar por concepto o detalle..."
+                    placeholder={`Buscar en ${selectedFinanceWorkspace}...`}
                     className="w-full text-xs p-1.5 px-3 bg-white border border-slate-250 rounded-lg focus:outline-none focus:border-slate-900"
                   />
                 </div>
               </div>
 
-              {/* CUADROS GENERALES DE METRICAS MACRO (KPI CARDS DYNAMIC FOR THE MONTH) */}
+              {/* CUADROS GENERALES DE METRICAS MACRO (KPI CARDS DYNAMIC FOR THE SELECTED WORKSPACE & MONTH) */}
               {(() => {
                 const formatMonthAndYearSim = (dateStr: string) => dateStr.substring(0, 7);
-                const monthlyTxs = financeTransactions.filter(tx => formatMonthAndYearSim(tx.date) === selectedFinanceMonth);
+                const monthlyTxs = financeTransactions.filter(tx => 
+                  formatMonthAndYearSim(tx.date) === selectedFinanceMonth && 
+                  tx.category === selectedFinanceWorkspace
+                );
                 
                 const totalIncomes = monthlyTxs
                   .filter(tx => tx.type === "INGRESOS")
@@ -3686,97 +3854,96 @@ services:
                   .filter(tx => tx.type === "OBLIGACIONES" && tx.status === "PAGADO")
                   .reduce((sum, tx) => sum + tx.amount, 0);
 
-                // El Balance Neto para caja libre de operaciones del mes: Ingresos - Gastos Efectuados - Obligaciones ya liquidadas
                 const netBalance = totalIncomes - totalExpenses - totalObligationsPaid;
 
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
                     
-                    {/* Card 1: Ingresos reales del mes */}
+                    {/* Card 1: Ingresos de la cuenta */}
                     <div className="bg-white border border-emerald-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider">
-                          🟢 INGRESOS CORRIENTES
+                        <span className="text-[9px] font-extrabold uppercase text-emerald-800 tracking-wider">
+                          🟢 ENTRADAS [{selectedFinanceWorkspace}]
                         </span>
-                        <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 font-extrabold">
-                          + Flujo Caja
+                        <span className="text-[9px] font-mono font-blue font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 uppercase tracking-widest">
+                          + Saldo
                         </span>
                       </div>
                       <div className="mt-2.5">
-                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                        <span className="text-xl font-black text-slate-900 tracking-tight block">
                           ${totalIncomes.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
-                          <span>Registros de entradas en este periodo del mes.</span>
+                        <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                          <span>Entradas únicamente cargadas a la cuenta.</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card 2: Egresos / Gastos cursados */}
+                    {/* Card 2: Egresos/Gastos efectuados */}
                     <div className="bg-white border border-rose-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider">
-                          🔴 EGRESOS Y GASTOS
+                        <span className="text-[9px] font-extrabold uppercase text-rose-800 tracking-wider">
+                          🔴 GASTOS [{selectedFinanceWorkspace}]
                         </span>
-                        <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100 font-extrabold">
-                          - Gastado
+                        <span className="text-[9px] font-mono font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100 uppercase tracking-widest">
+                          Efectuado
                         </span>
                       </div>
                       <div className="mt-2.5">
-                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                        <span className="text-xl font-black text-slate-900 tracking-tight block">
                           ${totalExpenses.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
-                          <span>Excluye obligaciones pendientes de cobro.</span>
+                        <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                          <span>Excluye compromisos fijos pendientes.</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card 3: Compromisos y obligaciones fijas */}
+                    {/* Card 3: Compromisos fijos */}
                     <div className="bg-white border border-amber-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider">
-                          ⚠️ COMPROMISOS Fijos
+                        <span className="text-[9px] font-extrabold uppercase text-amber-800 tracking-wider">
+                          ⚠️ COMPROMISOS [*]
                         </span>
-                        <span className="text-[10px] font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100 font-extrabold">
+                        <span className="text-[9px] font-mono font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100 uppercase tracking-widest">
                           Obligaciones
                         </span>
                       </div>
                       <div className="mt-2.5">
-                        <span className="text-2xl font-black text-slate-900 tracking-tight block">
+                        <span className="text-xl font-black text-slate-900 tracking-tight block">
                           ${(totalObligationsPending + totalObligationsPaid).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <div className="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px]">
-                          <span className="text-amber-700 bg-amber-50 px-1 rounded font-extrabold">
+                        <div className="text-[9px] text-slate-500 mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px]">
+                          <span className="text-amber-700 bg-amber-50 px-1.5 rounded font-extrabold">
                             Pendiente: ${totalObligationsPending}
                           </span>
-                          <span className="text-emerald-700 bg-emerald-50 px-1 rounded font-extrabold">
-                            Pagado: ${totalObligationsPaid}
+                          <span className="text-emerald-700 bg-emerald-50 px-1.5 rounded font-extrabold">
+                            Saldado: ${totalObligationsPaid}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card 4: Balance Neto / Margen libre */}
+                    {/* Card 4: Flujo Neto Disponible de la categoría activa */}
                     <div className={`p-4 rounded-xl border flex flex-col justify-between shadow-xxs ${
                       netBalance >= 0 
                         ? "bg-slate-900 border-slate-950 text-white" 
                         : "bg-rose-950 border-rose-900 text-white"
                     }`}>
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">
-                          ⚖️ FLUJO NETO DISPONIBLE
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-300">
+                          ⚖️ FLUJO NETO [{selectedFinanceWorkspace}]
                         </span>
-                        <span className="text-[9px] font-mono font-bold text-slate-200 bg-white/10 px-1.5 py-0.2 rounded uppercase font-black">
-                          {netBalance >= 0 ? "Excedente" : "Déficit"}
+                        <span className="text-[8.5px] font-mono font-bold text-slate-200 bg-white/10 px-1.5 py-0.2 rounded uppercase font-black">
+                          {netBalance >= 0 ? "Margen +" : "Ajustar"}
                         </span>
                       </div>
                       <div className="mt-2.5">
-                        <span className={`text-2xl font-black tracking-tight block ${netBalance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        <span className={`text-xl font-black tracking-tight block ${netBalance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                           ${netBalance.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[9px] text-slate-400 mt-1 font-mono">
-                          <span>Ingresos restando Gastos y Obligaciones pagadas.</span>
+                          <span>Balance solo de la cuenta {selectedFinanceWorkspace}.</span>
                         </div>
                       </div>
                     </div>
@@ -3791,37 +3958,38 @@ services:
                 {/* Lado Izquierdo: Formularios Auxiliares (Añadir Transacción, Categorías y Visual de Distribución) */}
                 <div className="lg:col-span-5 space-y-5">
                   
-                  {/* Formulario 1: Registrar Nueva Transacción (Ingreso/Gasto/Obligación) */}
+                  {/* Formulario 1: Registrar Nueva Transacción (Precoordinada con la cuenta activa) */}
                   {showAddTxCard && (
                     <div className="bg-white border-2 border-slate-900 p-5 rounded-xl shadow-md space-y-4 animate-slide-in">
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                         <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                          💼 REGISTRAR TRANSACCIÓN FINANCIERA
+                          💼 RESIDUAL EN {selectedFinanceWorkspace.toUpperCase()}
                         </h4>
                         <button
                           onClick={() => setShowAddTxCard(false)}
-                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs"
+                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs cursor-pointer"
                         >
                           ✕
                         </button>
                       </div>
 
                       <form onSubmit={handleAddFinanceTransaction} className="space-y-3.5 text-xs text-left">
+                        <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-extrabold uppercase text-indigo-800">CUENTA DE DESTINO PROPIA:</span>
+                          <span className="font-sans font-black text-xs text-indigo-750 bg-white px-2.5 py-1 rounded border border-indigo-150 uppercase shadow-3xs">
+                            {selectedFinanceWorkspace}
+                          </span>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
-                              Tipo de Transacción:
+                              Tipo de Registro:
                             </label>
                             <select
                               value={newTxType}
-                              onChange={(e) => {
-                                const selectedType = e.target.value as any;
-                                setNewTxType(selectedType);
-                                if (selectedType === "OBLIGACIONES") {
-                                  setNewTxCategory("Servicios");
-                                }
-                              }}
-                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans bg-white font-bold text-slate-850"
+                              onChange={(e) => setNewTxType(e.target.value as any)}
+                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans bg-white font-bold text-slate-850 cursor-pointer"
                             >
                               <option value="INGRESOS">🟢 Ingreso (+)</option>
                               <option value="EGRESOS">🔴 Egreso (-)</option>
@@ -3855,7 +4023,7 @@ services:
                             required
                             value={newTxTitle}
                             onChange={(e) => setNewTxTitle(e.target.value)}
-                            placeholder="Ej. Hosting Servidores, Supermercado, Factura SoftDev"
+                            placeholder="Ej. Hosting Servidor, Limpieza Loft, Impuestos, etc."
                             className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans"
                           />
                         </div>
@@ -3873,36 +4041,17 @@ services:
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
-                              Categoría / Segmento:
-                            </label>
-                            <select
-                              value={newTxCategory}
-                              onChange={(e) => setNewTxCategory(e.target.value)}
-                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-sans bg-white"
-                            >
-                              {financeCategories.map(cat => (
-                                <option key={cat} value={cat}>
-                                  {cat}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
-                              Fecha de Ejecución:
-                            </label>
-                            <input
-                              type="date"
-                              required
-                              value={newTxDate}
-                              onChange={(e) => setNewTxDate(e.target.value)}
-                              className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-mono bg-white"
-                            />
-                          </div>
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wide text-slate-400 block mb-1">
+                            Fecha de Registro:
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={newTxDate}
+                            onChange={(e) => setNewTxDate(e.target.value)}
+                            className="w-full text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none font-mono bg-white cursor-pointer"
+                          />
                         </div>
 
                         {newTxType === "OBLIGACIONES" && (
@@ -3912,7 +4061,7 @@ services:
                             </span>
                             <div>
                               <label className="text-[9px] font-black uppercase tracking-wide text-slate-400 block mb-1">
-                                Fecha Límite de Pago (Plazo):
+                                Fecha Límite de Pago:
                               </label>
                               <input
                                 type="date"
@@ -3929,7 +4078,7 @@ services:
                           <button
                             type="button"
                             onClick={() => setShowAddTxCard(false)}
-                            className="px-3 py-1.5 border border-slate-250 text-slate-600 rounded text-xs"
+                            className="px-3 py-1.5 border border-slate-250 hover:bg-slate-50 text-slate-600 rounded text-xs cursor-pointer"
                           >
                             Cancelar
                           </button>
@@ -3944,16 +4093,16 @@ services:
                     </div>
                   )}
 
-                  {/* Formulario 2: Crear Categorías Personalizadas */}
+                  {/* Formulario 2: Crear Cuenta (Categorías de Balances Independientes) */}
                   {showAddCategoryForm && (
                     <div className="bg-white border-2 border-slate-900 p-5 rounded-xl shadow-md space-y-4 animate-slide-in">
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                        <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                          🏷️ GESTIÓN DE CATEGORÍAS FINANCIERAS
+                        <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 block leading-relaxed">
+                          🏷️ GESTOR DE CUENTAS INDEPENDIENTES
                         </h4>
                         <button
                           onClick={() => setShowAddCategoryForm(false)}
-                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs"
+                          className="text-slate-400 hover:text-slate-900 font-bold font-mono text-xs cursor-pointer"
                         >
                           ✕
                         </button>
@@ -3966,12 +4115,12 @@ services:
                             required
                             value={newCustomCategoryInput}
                             onChange={(e) => setNewCustomCategoryInput(e.target.value)}
-                            placeholder="Nombre de la nueva categoría (ej. Logística)"
+                            placeholder="Nombre de la nueva cuenta (ej. Logística)"
                             className="flex-1 text-xs p-2.5 border border-slate-250 rounded focus:border-slate-900 focus:outline-none"
                           />
                           <button
                             type="submit"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 font-mono font-bold uppercase cursor-pointer"
+                            className="bg-indigo-650 hover:bg-indigo-705 text-white rounded px-4 py-2 font-mono font-bold uppercase cursor-pointer text-xs"
                           >
                             Crear
                           </button>
@@ -3980,22 +4129,23 @@ services:
                         {/* Listado de categorías activas con oportunidad de eliminar si es personalizada */}
                         <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                           <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                            Categorías del Sistema y Propias:
+                            Cuentas Protegidas y Personalizadas:
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             {financeCategories.map(cat => {
-                              const isSystem = ["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas"].includes(cat);
+                              const isSystem = ["Familiar", "Vinannet", "Vinanmerch", "Airbnb"].includes(cat);
                               return (
-                                <div key={cat} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono">
+                                <div key={cat} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-mono">
                                   <span className="font-bold text-slate-700 uppercase tracking-tight truncate mr-1">
+                                    {cat === "Familiar" ? "🏡 " : cat === "Vinannet" ? "🌐 " : cat === "Vinanmerch" ? "👕 " : cat === "Airbnb" ? "🔑 " : "💼 "}
                                     {cat} {isSystem && "🔒"}
                                   </span>
                                   {!isSystem && (
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteCustomCategory(cat)}
-                                      className="text-rose-500 hover:text-rose-700 pr-1 hover:scale-105"
-                                      title="Eliminar categoría personalizada"
+                                      className="text-rose-500 hover:text-rose-750 pr-1 hover:scale-105 font-bold cursor-pointer"
+                                      title="Eliminar cuenta personalizada"
                                     >
                                       ✕
                                     </button>
@@ -4010,7 +4160,7 @@ services:
                           <button
                             type="button"
                             onClick={() => setShowAddCategoryForm(false)}
-                            className="px-3 py-1.5 border border-slate-250 text-slate-650 rounded text-xs"
+                            className="px-3 py-1.5 border border-slate-250 text-slate-650 hover:bg-slate-50 rounded text-xs cursor-pointer"
                           >
                             Cerrar
                           </button>
@@ -4019,14 +4169,14 @@ services:
                     </div>
                   )}
 
-                  {/* DISEÑO ESTÉTICO DE DISTRIBUCIÓN FLUIDA (EMPRESA vs FAMILIA) */}
-                  <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs space-y-4 text-left">
+                  {/* DISEÑO ESTÉTICO DE DISTRIBUCIÓN FLUIDA ENTRE CUENTAS COLECTIVAS */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-xl text-left">
                     <div>
                       <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
-                        ⚖️ BALANCE COCOON: NEGOCIO vs FAMILIARES
+                        ⚖️ FLUJO COLECTIVO DE COMPROMISOS & GASTOS
                       </h4>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Análisis porcentual de gastos y obligaciones registrados en el mes de **{selectedFinanceMonth}**.
+                        Distribución de gastos reales y obligaciones ya <b>PAGADAS</b> en el mes de <b>{selectedFinanceMonth}</b>.
                       </p>
                     </div>
 
@@ -4037,54 +4187,72 @@ services:
                         (tx.type === "EGRESOS" || (tx.type === "OBLIGACIONES" && tx.status === "PAGADO"))
                       );
 
-                      const negocioSpent = currentMonthTxs.filter(t => t.category === "Negocio").reduce((sum, t) => sum + t.amount, 0);
                       const familiarSpent = currentMonthTxs.filter(t => t.category === "Familiar").reduce((sum, t) => sum + t.amount, 0);
-                      const othersSpent = currentMonthTxs.filter(t => t.category !== "Negocio" && t.category !== "Familiar").reduce((sum, t) => sum + t.amount, 0);
+                      const vinannetSpent = currentMonthTxs.filter(t => t.category === "Vinannet").reduce((sum, t) => sum + t.amount, 0);
+                      const vinanmerchSpent = currentMonthTxs.filter(t => t.category === "Vinanmerch").reduce((sum, t) => sum + t.amount, 0);
+                      const airbnbSpent = currentMonthTxs.filter(t => t.category === "Airbnb").reduce((sum, t) => sum + t.amount, 0);
+                      const customSpent = currentMonthTxs.filter(t => !["Familiar", "Vinannet", "Vinanmerch", "Airbnb"].includes(t.category)).reduce((sum, t) => sum + t.amount, 0);
                       
-                      const totalSpent = negocioSpent + familiarSpent + othersSpent;
+                      const totalSpent = familiarSpent + vinannetSpent + vinanmerchSpent + airbnbSpent + customSpent;
 
-                      const negocioPct = totalSpent > 0 ? Math.round((negocioSpent / totalSpent) * 100) : 0;
                       const familiarPct = totalSpent > 0 ? Math.round((familiarSpent / totalSpent) * 100) : 0;
-                      const othersPct = totalSpent > 0 ? 100 - negocioPct - familiarPct : 0;
+                      const vinannetPct = totalSpent > 0 ? Math.round((vinannetSpent / totalSpent) * 100) : 0;
+                      const vinanmerchPct = totalSpent > 0 ? Math.round((vinanmerchSpent / totalSpent) * 100) : 0;
+                      const airbnbPct = totalSpent > 0 ? Math.round((airbnbSpent / totalSpent) * 100) : 0;
+                      const customPct = totalSpent > 0 ? 100 - familiarPct - vinannetPct - vinanmerchPct - airbnbPct : 0;
 
                       return (
-                        <div className="space-y-4">
-                          <div className="h-4 w-full bg-slate-100 rounded-full flex overflow-hidden shadow-2xs">
-                            {negocioPct > 0 && (
-                              <div className="bg-indigo-650 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${negocioPct}%` }} title={`Negocio: ${negocioPct}%`}>
-                                {negocioPct}%
-                              </div>
-                            )}
+                        <div className="space-y-4 mt-3">
+                          <div className="h-4.5 w-full bg-slate-100 rounded-full flex overflow-hidden shadow-2xs">
                             {familiarPct > 0 && (
-                              <div className="bg-emerald-500 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${familiarPct}%` }} title={`Familia: ${familiarPct}%`}>
-                                {familiarPct}%
+                              <div className="bg-emerald-550 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${familiarPct}%` }} title={`Familiar: ${familiarPct}%`}>
+                                🏡 {familiarPct}%
                               </div>
                             )}
-                            {othersPct > 0 && (
-                              <div className="bg-amber-400 text-slate-900 h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${othersPct}%` }} title={`Otras categorías: ${othersPct}%`}>
-                                {othersPct}%
+                            {vinannetPct > 0 && (
+                              <div className="bg-indigo-600 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${vinannetPct}%` }} title={`Vinannet: ${vinannetPct}%`}>
+                                🌐 {vinannetPct}%
+                              </div>
+                            )}
+                            {vinanmerchPct > 0 && (
+                              <div className="bg-purple-600 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${vinanmerchPct}%` }} title={`Vinanmerch: ${vinanmerchPct}%`}>
+                                👕 {vinanmerchPct}%
+                              </div>
+                            )}
+                            {airbnbPct > 0 && (
+                              <div className="bg-rose-500 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${airbnbPct}%` }} title={`Airbnb: ${airbnbPct}%`}>
+                                🔑 {airbnbPct}%
+                              </div>
+                            )}
+                            {customPct > 0 && (
+                              <div className="bg-slate-700 text-white h-full flex items-center justify-center text-[8px] font-black" style={{ width: `${customPct}%` }} title={`Otras cuentas: ${customPct}%`}>
+                                💼 {customPct}%
                               </div>
                             )}
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
-                            <div className="border bg-indigo-50/20 border-indigo-100 p-1.5 rounded-lg text-center">
-                              <span className="text-[8px] text-slate-400 block uppercase font-bold">NEGOCIO</span>
-                              <span className="font-extrabold text-indigo-700 block mt-0.5">${negocioSpent}</span>
-                            </div>
-                            <div className="border bg-emerald-50/20 border-emerald-100 p-1.5 rounded-lg text-center">
-                              <span className="text-[8px] text-slate-400 block uppercase font-bold">FAMILIAR</span>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[9px] font-mono">
+                            <div className="border border-emerald-100 p-1 rounded-md text-center bg-emerald-50/10">
+                              <span className="text-slate-400 block tracking-tight font-bold">🏡 FAMILIA</span>
                               <span className="font-extrabold text-emerald-700 block mt-0.5">${familiarSpent}</span>
                             </div>
-                            <div className="border bg-amber-50/20 border-amber-100 p-1.5 rounded-lg text-center">
-                              <span className="text-[8px] text-slate-400 block uppercase font-bold">OTROS</span>
-                              <span className="font-extrabold text-amber-700 block mt-0.5">${othersSpent}</span>
+                            <div className="border border-indigo-100 p-1 rounded-md text-center bg-indigo-50/10">
+                              <span className="text-slate-400 block tracking-tight font-bold">🌐 VINANNET</span>
+                              <span className="font-extrabold text-indigo-700 block mt-0.5">${vinannetSpent}</span>
+                            </div>
+                            <div className="border border-purple-100 p-1 rounded-md text-center bg-purple-50/10">
+                              <span className="text-slate-400 block tracking-tight font-bold">👕 MERCH</span>
+                              <span className="font-extrabold text-purple-700 block mt-0.5">${vinanmerchSpent}</span>
+                            </div>
+                            <div className="border border-rose-100 p-1 rounded-md text-center bg-rose-50/10">
+                              <span className="text-slate-400 block tracking-tight font-bold">🔑 AIRBNB</span>
+                              <span className="font-extrabold text-rose-700 block mt-0.5">${airbnbSpent}</span>
+                            </div>
+                            <div className="border border-slate-200 p-1 rounded-md text-center bg-slate-50/10">
+                              <span className="text-slate-400 block tracking-tight font-bold">💼 OTRXS</span>
+                              <span className="font-extrabold text-slate-700 block mt-0.5">${customSpent}</span>
                             </div>
                           </div>
-                          
-                          <p className="text-[9px] text-slate-400 leading-tight">
-                            * El gráfico mide gastos corrientes efectuados + deudas fijos marcadas ya como <b>PAGADAS</b>. Es ideal calibrar mensualmente para no sofocar tu caja familiar.
-                          </p>
                         </div>
                       );
                     })()}
@@ -4100,17 +4268,18 @@ services:
                       <h4 className="font-mono text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                         📑 TRANSACCIONES EN EL MES ({filteredTxs.length})
                       </h4>
-                      <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-500 py-0.5 px-2 rounded-md uppercase">
-                        Real-Time SQL
+                      <span className="text-[9px] font-mono font-bold bg-indigo-50 text-indigo-700 py-0.5 px-2 rounded-md uppercase tracking-wider">
+                        Cuenta: {selectedFinanceWorkspace}
                       </span>
                     </div>
 
                     <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                       {filteredTxs.length === 0 ? (
                         <div className="text-center py-12 text-slate-400 text-xs font-mono border border-dashed border-slate-200 rounded-lg space-y-2">
-                          <div>📭 Ninguna entrada registrada.</div>
+                          <div className="text-2xl">⏳</div>
+                          <div className="font-extrabold text-slate-700">Ninguna transacción cargada en {selectedFinanceWorkspace}</div>
                           <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
-                            No se encontraron ingresos, egresos ni obligaciones para el mes de {selectedFinanceMonth} con la categoría o filtros cruzados activos.
+                            No se encontraron ingresos, egresos ni obligaciones para el mes de {selectedFinanceMonth} en esta cuenta. Use el botón superior para registrar una transacción.
                           </p>
                         </div>
                       ) : (

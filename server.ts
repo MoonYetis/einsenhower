@@ -392,35 +392,35 @@ interface FinanceTransaction {
 }
 
 const defaultFinances: { categories: string[]; transactions: FinanceTransaction[] } = {
-  categories: ["Negocio", "Familiar", "Ocio", "Desarrollo", "Personal", "Finanzas", "Servicios", "Impuestos"],
+  categories: ["Familiar", "Vinannet", "Vinanmerch", "Airbnb"],
   transactions: [
     {
       id: "tx-1",
-      title: "Cobro Factura SoftDev S.A.",
-      description: "Servicio de consultoría y desarrollo de software correspondiente a la primera fase.",
-      amount: 4500,
+      title: "Cobro por Reserva - Huésped Suite Deluxe",
+      description: "Ingreso recibido por reserva de 5 noches de hospedaje en Airbnb.",
+      amount: 450,
       type: "INGRESOS",
-      category: "Negocio",
+      category: "Airbnb",
       date: "2026-05-10",
       created_at: "2026-05-10T08:00:00.000Z"
     },
     {
       id: "tx-2",
-      title: "Suscripción AWS Cloud Run",
-      description: "Servidor de despliegue en la nube y base de datos postgresql administrada.",
-      amount: 180,
+      title: "Suscripción Servidores Cloud dedicada",
+      description: "Infraestructura en la nube dedicada para el portal Vinannet.",
+      amount: 120,
       type: "EGRESOS",
-      category: "Negocio",
+      category: "Vinannet",
       date: "2026-05-15",
       created_at: "2026-05-15T12:00:00.000Z"
     },
     {
       id: "tx-3",
-      title: "Alquiler de Oficina",
-      description: "Obligación de pago de oficina física del coworking.",
-      amount: 1200,
+      title: "Impuesto Anual de Registro de Hosting",
+      description: "Obligación de pago del dominio y licencia de hosting anual para Vinannet.",
+      amount: 350,
       type: "OBLIGACIONES",
-      category: "Negocio",
+      category: "Vinannet",
       date: "2026-05-30",
       due_date: "2026-05-30",
       status: "PENDIENTE",
@@ -428,9 +428,9 @@ const defaultFinances: { categories: string[]; transactions: FinanceTransaction[
     },
     {
       id: "tx-4",
-      title: "Supermercado Mensual Familiar",
-      description: "Compras de provisiones para la casa.",
-      amount: 450,
+      title: "Supermercado Mensual Colectivo",
+      description: "Compras de despensa familiar.",
+      amount: 320,
       type: "EGRESOS",
       category: "Familiar",
       date: "2026-05-12",
@@ -438,9 +438,9 @@ const defaultFinances: { categories: string[]; transactions: FinanceTransaction[
     },
     {
       id: "tx-5",
-      title: "Colegio de los Niños",
-      description: "Colegiatura del mes en curso.",
-      amount: 380,
+      title: "Colegiatura / Cuota de Estudios",
+      description: "Obligación mensual de educación familiar.",
+      amount: 280,
       type: "OBLIGACIONES",
       category: "Familiar",
       date: "2026-05-28",
@@ -450,23 +450,25 @@ const defaultFinances: { categories: string[]; transactions: FinanceTransaction[
     },
     {
       id: "tx-6",
-      title: "Plan Teléfono e Internet Celular",
-      description: "Servicios de comunicación móvil.",
-      amount: 45,
-      type: "EGRESOS",
-      category: "Familiar",
-      date: "2026-05-22",
-      created_at: "2026-05-22T08:15:00.000Z"
+      title: "Venta Lote de Camisetas Premium",
+      description: "Ventas al por mayor de camisetas de algodón peinado.",
+      amount: 1500,
+      type: "INGRESOS",
+      category: "Vinanmerch",
+      date: "2026-05-20",
+      created_at: "2026-05-20T14:45:00.000Z"
     },
     {
       id: "tx-7",
-      title: "Venta de Licencia de Software",
-      description: "Cobro recurrente por licenciamiento de microservicio.",
-      amount: 850,
-      type: "INGRESOS",
-      category: "Negocio",
+      title: "Factura de Proveedor Textil",
+      description: "Materia prima importada para producción de indumentaria.",
+      amount: 600,
+      type: "OBLIGACIONES",
+      category: "Vinanmerch",
       date: "2026-05-25",
-      created_at: "2026-05-25T11:00:00.000Z"
+      due_date: "2026-05-25",
+      status: "PENDIENTE",
+      created_at: "2026-05-05T11:00:00.000Z"
     }
   ]
 };
