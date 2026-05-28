@@ -307,6 +307,24 @@ export default function App() {
   const [financeSearchQuery, setFinanceSearchQuery] = useState("");
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
 
+  // Estados para Límites Presupuestarios Mensuales por Workspace
+  const [financeLimits, setFinanceLimits] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem("finance_limits");
+    return saved ? JSON.parse(saved) : { Familiar: 3000, Vinannet: 1000, Vinanmerch: 5000, Airbnb: 2000 };
+  });
+  const [editingLimitVal, setEditingLimitVal] = useState<string>("");
+  const [isEditingLimit, setIsEditingLimit] = useState<boolean>(false);
+
+  const handleSaveWorkspaceLimit = (workspace: string, lmt: number) => {
+    const nextLimits = { ...financeLimits, [workspace]: lmt };
+    setFinanceLimits(nextLimits);
+    localStorage.setItem("finance_limits", JSON.stringify(nextLimits));
+    addLog(`💰 PRESUPUESTO: Ajustado límite mensual para [${workspace}] a S/ ${lmt}`, "success");
+    setIsEditingLimit(false);
+  };
+
+  const [showBreathingOverlay, setShowBreathingOverlay] = useState(false);
+
   // Formulario de Transacción Nueva
   const [newTxTitle, setNewTxTitle] = useState("");
   const [newTxDescription, setNewTxDescription] = useState("");
@@ -725,6 +743,10 @@ export default function App() {
   const [pomodoroTimeLeft, setPomodoroTimeLeft] = useState(1500); // 25 Minutos
   const [pomodoroIsRunning, setPomodoroIsRunning] = useState(false);
   const [pomodoroMode, setPomodoroMode] = useState<"focus" | "break">("focus");
+  const [completedPomodorosCount, setCompletedPomodorosCount] = useState<number>(() => {
+    const saved = localStorage.getItem("completed_pomodoros_count");
+    return saved ? parseInt(saved, 10) : 3;
+  });
 
   // 2. OKRs / Metas Semanales Estratégicas
   const [weeklyGoals, setWeeklyGoals] = useState<{ id: string; title: string; category: "Trabajo" | "Vida" }[]>(() => {
@@ -784,6 +806,11 @@ export default function App() {
       }
 
       if (pomodoroMode === "focus") {
+        setCompletedPomodorosCount(prev => {
+          const next = prev + 1;
+          localStorage.setItem("completed_pomodoros_count", next.toString());
+          return next;
+        });
         setPomodoroMode("break");
         setPomodoroTimeLeft(300); // 5 Minutos de descanso
         addLog(`🍅 Ciclo Pomodoro Completado para la tarea ${pomodoroTaskId || 'general'}. Iniciando descanso activo de 5 min.`, "success");
@@ -864,6 +891,26 @@ export default function App() {
     }
     setTaskGoalsMap(newMap);
     localStorage.setItem("task_goals_map", JSON.stringify(newMap));
+  };
+
+  // Mapa de Tarea -> Objetivo Estratégico de Plan de Ruta Maestro 2026
+  const [taskStrategyMap, setTaskStrategyMap] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem("task_strategy_map");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const handleLinkTaskToStrategy = (taskId: string, objId: string | null) => {
+    const newMap = { ...taskStrategyMap };
+    if (objId) {
+      newMap[taskId] = objId;
+      const targetObj = strategicPlan.strategicObjectives.find(o => o.id === objId);
+      addLog(`🎯 Enlazada tarea ${taskId} a la Iniciativa Estratégica: "${targetObj?.title || objId}"`, "success");
+    } else {
+      delete newMap[taskId];
+      addLog(`🔗 Desenlazada tarea de Iniciativa Estratégica`, "warn");
+    }
+    setTaskStrategyMap(newMap);
+    localStorage.setItem("task_strategy_map", JSON.stringify(newMap));
   };
 
   const handleAddWeeklyGoal = (title: string, category: "Trabajo" | "Vida") => {
@@ -2260,6 +2307,106 @@ services:
                         </div>
                       );
                     })()}
+                  </div>
+
+                  {/* Bitácora de Salubridad de Equipo & Bienestar Colectivo */}
+                  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-4 text-left animate-slide-in">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                          <Heart className="w-4 h-4 text-emerald-600" />
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider font-mono">
+                            Bitácora de Salubridad & Bienestar Colectivo
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-sans">
+                            Mitigador de fatiga cognitiva activa (Plan Maestro Hito ST-4).
+                          </p>
+                        </div>
+                      </div>
+                      <span className="p-1 px-2 bg-emerald-50 border border-emerald-100 rounded font-mono text-[8px] font-extrabold text-emerald-700 uppercase tracking-widest">
+                        Hito ST-4 Activo
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                      <div className="space-y-3 font-sans">
+                        <div className="text-xs text-slate-600 leading-relaxed">
+                          La carga de hoy refleja un balance de desconexión. Registren pausas regulares de respiración para sostener el intelecto operativo del equipo.
+                        </div>
+
+                        {/* Indicadores rápidos */}
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                          <div className="bg-indigo-50/40 border border-indigo-100 p-2 rounded-lg text-center">
+                            <span className="text-slate-400 block uppercase font-bold text-[8px]">Enfoques Pomodoro</span>
+                            <span className="text-xs font-black text-indigo-700 block mt-0.5">{completedPomodorosCount} Ciclos</span>
+                          </div>
+                          <div className="bg-emerald-50/40 border border-emerald-100 p-2 rounded-lg text-center">
+                            <span className="text-slate-400 block uppercase font-bold text-[8px]">Salud Cognitiva</span>
+                            <span className={`text-[10px] font-black block mt-0.5 ${completedPomodorosCount >= 4 ? "text-emerald-700" : "text-amber-700"}`}>
+                              {completedPomodorosCount >= 4 ? "Excelente (Enfoque)" : "Estable (Sostenido)"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Botón de Minipausa de Desconexión */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addLog("💆 BIENESTAR: Osman & Marie iniciaron una sesión rápida de relajación y respiración de 10s.", "success");
+                            setShowBreathingOverlay(true);
+                            setTimeout(() => {
+                              setShowBreathingOverlay(false);
+                              addLog("✨ BIENESTAR: Osman & Marie completaron la minipausa táctica. Carga mental aliviada.", "info");
+                            }, 10000);
+                          }}
+                          className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-3xs"
+                        >
+                          💆 Iniciar Respiración Colectiva
+                        </button>
+                      </div>
+
+                      {/* Gráfica de Balance Trabajo vs Tiempo de Vida */}
+                      <div className="bg-slate-55 border border-slate-150 p-3 rounded-xl flex flex-col justify-between h-full min-h-[143px] text-left">
+                        <div>
+                          <span className="text-[8px] font-mono font-black text-slate-400 block uppercase tracking-wider mb-2">
+                            Distribución de Energía Operativa (Trabajo vs Vida)
+                          </span>
+                          
+                          {(() => {
+                            const workTasks = tasks.filter(t => t.tags?.includes("Negocio") || t.tags?.includes("Desarrollo") || t.tags?.includes("Finanzas")).length;
+                            const lifeTasks = tasks.filter(t => t.tags?.includes("Personal") || t.tags?.includes("Ocio") || t.tags?.includes("Familiar")).length;
+                            
+                            const totalTagged = workTasks + lifeTasks || 1;
+                            const workPct = Math.round((workTasks / totalTagged) * 100);
+                            const lifePct = Math.max(0, 100 - workPct);
+
+                            return (
+                              <div className="space-y-2">
+                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden flex">
+                                  <div className="bg-indigo-600 h-full transition-all" style={{ width: `${workPct}%` }} title={`Trabajo: ${workPct}%`} />
+                                  <div className="bg-emerald-500 h-full transition-all" style={{ width: `${lifePct}%` }} title={`Familiar/Vida: ${lifePct}%`} />
+                                </div>
+                                <div className="flex justify-between items-center text-[8.5px] font-mono mt-1 text-slate-500">
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full" /> Trabajo: {workPct}%
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-emerald-550 rounded-full" /> Vida/Ocio: {lifePct}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-slate-500 leading-relaxed font-sans text-left pt-1 border-t border-slate-200 mt-1">
+                                  {workPct > 70 
+                                    ? "⚠️ Alerta: Carga de negocio sobre el indicador óptimo. Agenden un espacio de descanso familiar hoy."
+                                    : "✓ Balance óptimo entre metas de negocio y desconexión activa."}
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Consola de Gatillos / Deck de Acciones Rápidas */}
@@ -4338,8 +4485,88 @@ services:
 
                 const netBalance = totalIncomes - totalExpenses - totalObligationsPaid;
 
+                const spentAmount = totalExpenses + totalObligationsPaid;
+                const activeLimit = financeLimits[selectedFinanceWorkspace] || 0;
+                const realLimitPct = activeLimit > 0 ? (spentAmount / activeLimit) * 100 : 0;
+                const clippedLimitPct = Math.min(100, realLimitPct);
+
+                let progressColor = "bg-emerald-500";
+                let textColor = "text-emerald-700 bg-emerald-50 border-emerald-150";
+                let borderColor = "border-emerald-100/65 bg-emerald-50/5";
+                if (realLimitPct > 100) {
+                  progressColor = "bg-rose-600";
+                  textColor = "text-rose-700 bg-rose-50 border-rose-200 font-black";
+                  borderColor = "border-rose-150 bg-rose-50/10";
+                } else if (realLimitPct > 80) {
+                  progressColor = "bg-amber-500";
+                  textColor = "text-amber-700 bg-amber-50 border-amber-150 font-bold";
+                  borderColor = "border-amber-100 bg-amber-50/5";
+                }
+
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+                  <div className="space-y-4">
+                    {/* Semáforo / Thermómetro del Gasto Mensual */}
+                    <div className={`p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all shadow-3xs ${borderColor}`}>
+                      <div className="space-y-1.5 flex-1 max-w-xl text-left">
+                        <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider font-mono">
+                          <span className="text-slate-500">Termómetro Presupuestal Mensual ({selectedFinanceMonth})</span>
+                          <span className="text-slate-400">Consumido: {realLimitPct.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 border border-slate-200/50 rounded-full h-3 overflow-hidden p-0.5 animate-pulse-slow">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
+                            style={{ width: `${clippedLimitPct}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-mono mt-1">
+                          <span className="text-slate-500">Gasto real acumulado: <strong className="text-slate-800">S/ {spentAmount.toLocaleString("es-ES")}</strong></span>
+                          <span className="text-slate-500">Límite establecido: <strong className="text-slate-800">S/ {activeLimit > 0 ? activeLimit.toLocaleString("es-ES") : "Sin límite"}</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {realLimitPct > 100 && (
+                          <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-1 rounded border border-rose-300 uppercase tracking-tight shrink-0">
+                            🚨 ¡Presupuesto Excedido!
+                          </span>
+                        )}
+
+                        {isEditingLimit ? (
+                          <form 
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSaveWorkspaceLimit(selectedFinanceWorkspace, parseFloat(editingLimitVal) || 0);
+                            }}
+                            className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-250 shadow-3xs"
+                          >
+                            <span className="text-[10px] font-mono text-slate-500 pl-1">S/</span>
+                            <input
+                              type="number"
+                              value={editingLimitVal}
+                              onChange={(e) => setEditingLimitVal(e.target.value)}
+                              className="w-16 font-mono text-xs px-1.5 py-0.5 border border-slate-200 rounded focus:outline-none focus:border-slate-800"
+                              placeholder="3000"
+                              autoFocus
+                            />
+                            <button type="submit" className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded cursor-pointer">OK</button>
+                            <button type="button" onClick={() => setIsEditingLimit(false)} className="text-[10px] text-slate-400 pr-1 cursor-pointer">Esc</button>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingLimitVal(activeLimit.toString());
+                              setIsEditingLimit(true);
+                            }}
+                            className="text-[10px] font-mono font-bold text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-350 px-2.5 py-1 rounded-lg bg-white transition-all hover:shadow-3xs scale-[0.98] cursor-pointer"
+                          >
+                            ⚙️ Ajustar Límite
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
                     
                     {/* Card 1: Ingresos de la cuenta */}
                     <div className="bg-white border border-emerald-100 p-4 rounded-xl shadow-xxs flex flex-col justify-between">
@@ -4431,6 +4658,7 @@ services:
                     </div>
 
                   </div>
+                </div>
                 );
               })()}
 
@@ -5432,10 +5660,18 @@ services:
                       const isOM = obj.owner === "Osman Marin";
                       const isMP = obj.owner === "Marie Puscan";
 
+                      // Encontrar tareas tácticas enlazadas
+                      const linkedTasks = tasks.filter(t => taskStrategyMap[t.id] === obj.id);
+                      const hasLinkedTasks = linkedTasks.length > 0;
+                      const doneLinked = linkedTasks.filter(t => t.status === "DONE").length;
+                      const calculatedProgress = hasLinkedTasks 
+                        ? Math.round((doneLinked / linkedTasks.length) * 100) 
+                        : obj.progress;
+
                       // Badge style
                       let statusBadge = "bg-slate-50 border-slate-200 text-slate-600";
                       if (obj.status === "ACTIVE") statusBadge = "bg-rose-50 border-rose-220 text-rose-700 font-black animate-pulse";
-                      if (obj.status === "COMPLETED") statusBadge = "bg-emerald-50 border-emerald-250 text-emerald-700 font-black";
+                      if (obj.status === "COMPLETED" || calculatedProgress === 100) statusBadge = "bg-emerald-50 border-emerald-250 text-emerald-700 font-black";
                       if (obj.status === "DELAYED") statusBadge = "bg-amber-50 border-amber-250 text-amber-700";
 
                       return (
@@ -5452,7 +5688,8 @@ services:
                               
                               <div className="flex gap-1.5 items-center">
                                 <span className={`text-[8.5px] border uppercase px-1.5 py-0.2 rounded font-mono ${statusBadge}`}>
-                                  {obj.status === "CONCEPT" ? "Propuesta" :
+                                  {calculatedProgress === 100 ? "Completado" :
+                                   obj.status === "CONCEPT" ? "Propuesta" :
                                    obj.status === "ACTIVE" ? "Activo" :
                                    obj.status === "COMPLETED" ? "Completado" : "Demorado"}
                                 </span>
@@ -5470,6 +5707,28 @@ services:
                               <p className="text-xs text-slate-500 mt-1 leading-relaxed font-sans font-medium line-clamp-3">
                                 {obj.description || "Sin descripción detallada de este hito estratégico."}
                               </p>
+
+                              {/* Tareas tácticas asociadas dinámicamente */}
+                              {hasLinkedTasks && (
+                                <div className="mt-2.5 bg-slate-50/80 border border-slate-150 rounded-lg p-2.5 space-y-1.5">
+                                  <span className="text-[8px] font-mono font-black text-rose-600 block uppercase tracking-wider">
+                                    Tareas Tácticas Asociadas ({doneLinked}/{linkedTasks.length}):
+                                  </span>
+                                  <div className="space-y-1">
+                                    {linkedTasks.map(t => (
+                                      <div key={t.id} className="flex items-center justify-between gap-2 text-[10px] text-slate-700 leading-tight">
+                                        <span className="truncate max-w-[180px] font-medium font-sans">📌 {t.title}</span>
+                                        <span className={`text-[7.5px] font-mono font-bold uppercase rounded px-1 shrink-0 ${
+                                          t.status === "DONE" ? "bg-emerald-550 text-white" :
+                                          t.status === "IN_PROGRESS" ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-slate-100 text-slate-600 border border-slate-200"
+                                        }`}>
+                                          {t.status === "DONE" ? "Saldado" : t.status === "IN_PROGRESS" ? "Proceso" : "Todo"}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -5478,16 +5737,18 @@ services:
                             {/* Progress info */}
                             <div className="space-y-1">
                               <div className="flex justify-between items-center text-[10px] font-mono">
-                                <span className="text-slate-400">Progreso de la Iniciativa</span>
-                                <span className="font-black text-slate-800">{obj.progress}%</span>
+                                <span className="text-slate-400 flex items-center gap-1">
+                                  Progreso {hasLinkedTasks && <span className="text-[8px] bg-indigo-50 text-indigo-600 border border-indigo-150 px-1 py-0.2 rounded font-black shrink-0">Autocalculado</span>}
+                                </span>
+                                <span className="font-black text-slate-800">{calculatedProgress}%</span>
                               </div>
                               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                 <div 
                                   className={`h-full rounded-full transition-all duration-500 ${
-                                    obj.status === "COMPLETED" ? "bg-emerald-500" :
+                                    calculatedProgress === 100 ? "bg-emerald-500" :
                                     obj.status === "DELAYED" ? "bg-amber-450" : "bg-rose-500"
                                   }`}
-                                  style={{ width: `${obj.progress}%` }}
+                                  style={{ width: `${calculatedProgress}%` }}
                                 />
                               </div>
                             </div>
@@ -5938,6 +6199,37 @@ services:
                     <div className="flex items-center gap-1.5 p-1.5 px-2 bg-indigo-50 border border-indigo-100/65 rounded text-[10px] text-indigo-700 font-medium font-sans leading-tight">
                       <span>🎯</span>
                       <span className="truncate">Alineado al OKR: <strong>{weeklyGoals.find(g => g.id === taskGoalsMap[currentTask.id])?.title}</strong></span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Vinculación a Objetivo Estratégico (Plan Maestro 2026) */}
+              <div className="border-t border-slate-200/60 pt-3 space-y-1.5 font-sans">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">
+                  3. Alineación con Plan Maestro Estratégico
+                </span>
+                
+                <div className="space-y-1">
+                  <select
+                    value={taskStrategyMap[currentTask.id] || ""}
+                    onChange={(e) => handleLinkTaskToStrategy(currentTask.id, e.target.value || null)}
+                    className="w-full text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 cursor-pointer font-sans"
+                  >
+                    <option value="">-- No enlazado a Plan Maestro --</option>
+                    {strategicPlan.strategicObjectives.map(obj => (
+                      <option key={obj.id} value={obj.id}>
+                        [{obj.targetPeriod}] {obj.title}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {taskStrategyMap[currentTask.id] && (
+                    <div className="flex items-center gap-1.5 p-1.5 px-2 bg-rose-50 border border-rose-100/65 rounded text-[10px] text-rose-700 font-medium font-sans leading-tight">
+                      <span>🚀</span>
+                      <span className="truncate">
+                        Iniciativa: <strong>{strategicPlan.strategicObjectives.find(g => g.id === taskStrategyMap[currentTask.id])?.title}</strong>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -6442,6 +6734,38 @@ services:
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DE EJERCICIO DE RESPIRACIÓN Y DESCONEXIÓN ACTIVADO */}
+      {showBreathingOverlay && (
+        <div className="fixed inset-0 bg-slate-950/98 backdrop-blur-md flex flex-col items-center justify-center z-[100] animate-fade-in text-white font-sans p-6 text-center">
+          <div className="max-w-md w-full space-y-6">
+            <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-950/80 px-2 py-1 border border-emerald-900/50 rounded uppercase tracking-widest leading-none">
+              Sesión de Desconexión Táctica Colectiva
+            </span>
+            
+            <h3 className="text-xl font-black uppercase tracking-tight text-white font-mono">
+              Inhale... Sostenga... Exhale...
+            </h3>
+            
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Tómense estos 10 segundos junto a su equipo para restaurar el balance de energía y liberar tensión acumulada.
+            </p>
+
+            {/* Breathing animation visual expander ball */}
+            <div className="relative py-12 flex items-center justify-center">
+              <div className="absolute w-32 h-32 rounded-full bg-emerald-500/10 border border-emerald-500/20 animate-ping" />
+              <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center animate-pulse-slow">
+                <span className="text-[10px] font-mono font-black text-emerald-200 uppercase tracking-widest pl-0.5">Respirar</span>
+              </div>
+            </div>
+
+            <div className="text-[10px] text-slate-400 font-mono flex items-center justify-center gap-1.5 bg-slate-900 border border-slate-800 p-2.5 rounded-lg justify-self-center">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Aliviando fatiga cognitiva activa...
+            </div>
           </div>
         </div>
       )}
